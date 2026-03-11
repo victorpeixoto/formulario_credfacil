@@ -22,25 +22,32 @@ export async function POST(req: NextRequest) {
     if (!enderecoCompleto?.trim()) return NextResponse.json({ erro: 'Endereço obrigatório.' }, { status: 400 });
     if (!aceitouCondicoes) return NextResponse.json({ erro: 'Aceite obrigatório.' }, { status: 400 });
 
-    const contactId = uuidv4();
+    const formCode = uuidv4();
     const now = new Date().toISOString();
+    const cpfLimpo = cpf.replace(/\D/g, '');
 
     // Salva no MongoDB ANTES de verificar WhatsApp (garante registro mesmo se todos números estiverem indisponíveis)
     const client = await clientPromise;
     const db = client.db('credfacil');
     const col = db.collection('conversations');
 
+    // Verifica se já existe registro para este CPF (ex: usuário que já conversou pelo WhatsApp)
+    const existing = await col.findOne({ cpf: cpfLimpo });
+
     await col.updateOne(
-      { cpf: cpf.replace(/\D/g, '') },
+      { cpf: cpfLimpo },
       {
         $set: {
-          contactId,
+          // Se já existe registro (ex: veio do WhatsApp direto), preserva o contactId do Chatwoot
+          // Se é registro novo, usa o formCode como contactId temporário
+          ...(existing ? {} : { contactId: formCode }),
+          formCode,
           status: 'ETAPA_5',
           isCompleted: false,
           isAbandoned: false,
           updatedAt: now,
           nomeCompleto,
-          cpf: cpf.replace(/\D/g, ''),
+          cpf: cpfLimpo,
           email,
           enderecoCompleto,
           trabalho,
@@ -59,7 +66,7 @@ export async function POST(req: NextRequest) {
     );
 
     // Rodízio de números: verifica disponibilidade via Graph API
-    const availableNumber = await getAvailableWhatsAppNumber(contactId);
+    const availableNumber = await getAvailableWhatsAppNumber(formCode);
     if (!availableNumber) {
       return NextResponse.json(
         { erro: 'Nenhum número disponível no momento. Nossa equipe já foi notificada. Tente novamente em breve.' },
@@ -68,7 +75,7 @@ export async function POST(req: NextRequest) {
     }
     const { whatsappLink } = availableNumber;
 
-    return NextResponse.json({ contactId, whatsappLink });
+    return NextResponse.json({ contactId: formCode, whatsappLink });
   } catch (err) {
     console.error('[submit] erro:', err);
     return NextResponse.json({ erro: 'Erro interno.' }, { status: 500 });
