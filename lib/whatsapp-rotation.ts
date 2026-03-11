@@ -28,7 +28,7 @@ async function fetchInboxesFromChatwoot(): Promise<ChatwootInbox[]> {
 
   const res = await fetch(chatwootUrl, {
     headers: {
-      api_access_token: chatwootToken,
+      api_access_token: chatwootToken
     },
   });
 
