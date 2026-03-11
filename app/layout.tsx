@@ -10,6 +10,9 @@ const geist = Geist({
 export const metadata: Metadata = {
   title: "Credfácil — Solicitação de Crédito",
   description: "Preencha o formulário para solicitar seu crédito.",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export const viewport: Viewport = {

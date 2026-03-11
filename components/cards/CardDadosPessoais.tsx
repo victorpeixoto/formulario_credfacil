@@ -39,6 +39,7 @@ export default function CardDadosPessoais({ nomeCompleto, cpf, email, onChange, 
   const [endereco, setEndereco] = useState<Endereco>({ cep: '', logradouro: '', bairro: '', cidade: '', uf: '', numero: '' });
   const [buscandoCep, setBuscandoCep] = useState(false);
   const [erroCep, setErroCep] = useState('');
+  const [logradouroManual, setLogradouroManual] = useState(false);
 
   function marcarTocado(campo: string) {
     setTocados((t) => ({ ...t, [campo]: true }));
@@ -66,7 +67,12 @@ export default function CardDadosPessoais({ nomeCompleto, cpf, email, onChange, 
         uf: data.uf || '',
       };
       setEndereco(novo);
-      onChange('enderecoCompleto', montarEnderecoCompleto(novo));
+      if (!data.logradouro) {
+        setLogradouroManual(true);
+      }
+      if (data.logradouro && novo.cidade) {
+        onChange('enderecoCompleto', montarEnderecoCompleto(novo));
+      }
     } catch {
       setErroCep('Erro ao buscar CEP. Tente novamente.');
     } finally {
@@ -187,14 +193,24 @@ export default function CardDadosPessoais({ nomeCompleto, cpf, email, onChange, 
           </div>
         </div>
 
-        {endereco.logradouro && (
+        {(endereco.logradouro || logradouroManual) && endereco.cidade && (
           <div className="flex flex-col gap-2">
-            <input
-              type="text"
-              value={endereco.logradouro}
-              readOnly
-              className={inputPreenchido}
-            />
+            {logradouroManual ? (
+              <input
+                type="text"
+                placeholder="Rua, Av, Travessa..."
+                value={endereco.logradouro}
+                onChange={(e) => atualizarEndereco('logradouro', e.target.value)}
+                className={inputNormal}
+              />
+            ) : (
+              <input
+                type="text"
+                value={endereco.logradouro}
+                readOnly
+                className={inputPreenchido}
+              />
+            )}
             <div className="flex gap-2">
               <input
                 type="text"

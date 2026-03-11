@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Shield shape -->
+  <path d="M16 1.5L3 7v9c0 8.5 5.5 14.2 13 15.5 7.5-1.3 13-7 13-15.5V7L16 1.5z" fill="#22c55e"/>
+  <path d="M16 3.5L5 8.2v7.8c0 7.2 4.7 12.1 11 13.3 6.3-1.2 11-6.1 11-13.3V8.2L16 3.5z" fill="white"/>
+  <path d="M16 5.5L7 9.5v6.5c0 6 3.9 10.1 9 11.2 5.1-1.1 9-5.2 9-11.2V9.5L16 5.5z" fill="#22c55e"/>
+  <!-- Letter C -->
+  <text x="16" y="21.5" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="15" fill="white">C</text>
+</svg>

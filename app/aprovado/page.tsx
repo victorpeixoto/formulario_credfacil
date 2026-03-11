@@ -11,10 +11,12 @@ function ConteudoAprovado() {
   const whatsappLink = `https://wa.me/${whatsappNumber}?text=${mensagem}`;
 
   return (
-    <main className="min-h-screen bg-white flex flex-col items-center justify-center px-6 max-w-md mx-auto text-center gap-8">
+    <main className="min-h-dvh bg-white flex flex-col items-center justify-center px-6 max-w-md mx-auto text-center gap-8">
       <div className="flex flex-col items-center gap-4">
-        <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center text-4xl">
-          ✅
+        <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
+          <svg className="w-10 h-10 text-green-500" fill="none" viewBox="0 0 24 24">
+            <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
         </div>
         <h1 className="text-2xl font-bold text-gray-900">Pré-cadastro concluído!</h1>
         <p className="text-gray-500 text-sm leading-relaxed">
