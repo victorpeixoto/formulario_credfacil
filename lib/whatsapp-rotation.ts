@@ -1,8 +1,16 @@
 import { sendTelegramAlert } from './telegram-alert';
 
-interface WhatsAppNumber {
-  phoneNumberId: string;   // ID do número na API do Facebook (ex: 944185295454611)
-  whatsappNumber: string;  // Número real para wa.me (ex: 5511982702103)
+const IGNORED_INBOX_IDS = [1, 3, 9, 13];
+
+interface ChatwootInbox {
+  id: number;
+  name: string;
+  phone_number: string;
+  channel_type: string;
+  provider_config?: {
+    api_key?: string;
+    phone_number_id?: string;
+  };
 }
 
 interface AvailableNumber {
@@ -10,75 +18,100 @@ interface AvailableNumber {
   whatsappLink: string;
 }
 
-function getNumbers(): WhatsAppNumber[] {
-  const raw = process.env.WHATSAPP_NUMBERS;
-  if (!raw) throw new Error('Variável de ambiente ausente: "WHATSAPP_NUMBERS"');
+async function fetchInboxesFromChatwoot(): Promise<ChatwootInbox[]> {
+  const chatwootUrl = process.env.CHATWOOT_API_URL;
+  const chatwootToken = process.env.CHATWOOT_API_TOKEN;
 
-  // Formato: "phoneNumberId1:numero1,phoneNumberId2:numero2"
-  return raw.split(',').map((entry) => {
-    const [phoneNumberId, whatsappNumber] = entry.trim().split(':');
-    if (!phoneNumberId || !whatsappNumber) {
-      throw new Error(`Formato inválido em WHATSAPP_NUMBERS: "${entry}". Use "phoneNumberId:numero".`);
-    }
-    return { phoneNumberId, whatsappNumber };
-  });
-}
-
-async function isNumberAvailable(phoneNumberId: string): Promise<boolean> {
-  const token = process.env.FACEBOOK_GRAPH_TOKEN;
-  if (!token) {
-    console.warn('[whatsapp-rotation] FACEBOOK_GRAPH_TOKEN não configurado, assumindo número disponível.');
-    return true;
+  if (!chatwootUrl || !chatwootToken) {
+    throw new Error('Variáveis de ambiente ausentes: CHATWOOT_API_URL e/ou CHATWOOT_API_TOKEN');
   }
 
+  const res = await fetch(chatwootUrl, {
+    headers: {
+      api_access_token: chatwootToken,
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`[whatsapp-rotation] Chatwoot retornou ${res.status} ao listar inboxes`);
+  }
+
+  const data = await res.json();
+  const inboxes: ChatwootInbox[] = data.payload || data;
+
+  return inboxes.filter(
+    (inbox) =>
+      !IGNORED_INBOX_IDS.includes(inbox.id) &&
+      inbox.provider_config?.api_key &&
+      inbox.provider_config?.phone_number_id
+  );
+}
+
+async function isNumberAvailable(phoneNumberId: string, apiKey: string): Promise<{ available: boolean; status: string }> {
   try {
     const res = await fetch(
-      `https://graph.facebook.com/v19.0/${phoneNumberId}?fields=verified_name,quality_rating,status&access_token=${token}`,
+      `https://graph.facebook.com/v19.0/${phoneNumberId}?fields=quality_rating,status,display_phone_number&access_token=${apiKey}`,
       { next: { revalidate: 0 } }
     );
 
     if (!res.ok) {
-      console.error(`[whatsapp-rotation] Graph API retornou ${res.status} para ${phoneNumberId}`);
-      return false;
+      const errorBody = await res.text().catch(() => 'sem body');
+      console.error(`[whatsapp-rotation] Graph API retornou ${res.status} para ${phoneNumberId} — ${errorBody}`);
+      return { available: false, status: 'ERROR' };
     }
 
     const data = await res.json();
 
-    // Se o status não for CONNECTED ou a quality_rating for LOW, considerar indisponível
     if (data.status && data.status !== 'CONNECTED') {
       console.warn(`[whatsapp-rotation] Número ${phoneNumberId} com status: ${data.status}`);
-      return false;
+      return { available: false, status: data.status };
     }
 
-    return true;
+    return { available: true, status: data.status || 'CONNECTED' };
   } catch (err) {
     console.error(`[whatsapp-rotation] Erro ao verificar ${phoneNumberId}:`, err);
-    return false;
+    return { available: false, status: 'ERROR' };
   }
 }
 
+function formatPhoneForWaMe(phone: string): string {
+  return phone.replace(/[^0-9]/g, '');
+}
+
 /**
- * Retorna o primeiro número disponível (não banido) usando rodízio.
- * Se todos estiverem banidos, envia alerta no Telegram e retorna null.
+ * Busca inboxes do Chatwoot, verifica status na Graph API com o token de cada inbox,
+ * e retorna o primeiro número disponível (CONNECTED).
  */
 export async function getAvailableWhatsAppNumber(contactId: string): Promise<AvailableNumber | null> {
-  const numbers = getNumbers();
+  const inboxes = await fetchInboxesFromChatwoot();
 
-  for (const num of numbers) {
-    const available = await isNumberAvailable(num.phoneNumberId);
-    if (available) {
-      const mensagem = encodeURIComponent(`Olá! Meu código é: ${contactId}`);
-      return {
-        whatsappNumber: num.whatsappNumber,
-        whatsappLink: `https://wa.me/${num.whatsappNumber}?text=${mensagem}`,
-      };
-    }
-    console.warn(`[whatsapp-rotation] Número ${num.whatsappNumber} (${num.phoneNumberId}) indisponível, tentando próximo...`);
+  if (inboxes.length === 0) {
+    console.error('[whatsapp-rotation] Nenhum inbox válido encontrado no Chatwoot');
+    return null;
   }
 
-  // Todos os números estão banidos — alerta no Telegram
+  const checked: { name: string; phone: string; status: string }[] = [];
+
+  for (const inbox of inboxes) {
+    const phoneNumberId = inbox.provider_config!.phone_number_id!;
+    const apiKey = inbox.provider_config!.api_key!;
+
+    const { available, status } = await isNumberAvailable(phoneNumberId, apiKey);
+    checked.push({ name: inbox.name, phone: inbox.phone_number, status });
+
+    if (available) {
+      const waNumber = formatPhoneForWaMe(inbox.phone_number);
+      const mensagem = encodeURIComponent(`Olá! Meu código é: ${contactId}`);
+      return {
+        whatsappNumber: waNumber,
+        whatsappLink: `https://wa.me/${waNumber}?text=${mensagem}`,
+      };
+    }
+    console.warn(`[whatsapp-rotation] Inbox "${inbox.name}" (${inbox.phone_number}) indisponível (${status}), tentando próximo...`);
+  }
+
   await sendTelegramAlert(
-    `🚨 *ALERTA CREDFÁCIL*\n\nTodos os números WhatsApp estão banidos!\nCliente com contactId: \`${contactId}\` não conseguiu prosseguir.\n\nNúmeros verificados:\n${numbers.map((n) => `- ${n.whatsappNumber} (ID: ${n.phoneNumberId})`).join('\n')}`
+    `🚨 *ALERTA CREDFÁCIL*\n\nTodos os números WhatsApp estão indisponíveis!\nCliente com contactId: \`${contactId}\` não conseguiu prosseguir.\n\nNúmeros verificados:\n${checked.map((n) => `- ${n.name}: ${n.phone} → ${n.status}`).join('\n')}`
   );
 
   return null;
