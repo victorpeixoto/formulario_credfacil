@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
           // Se é registro novo, usa o formCode como contactId temporário
           ...(existing ? {} : { contactId: formCode }),
           formCode,
-          status: 'ETAPA_5',
+          status: 'ETAPA_4',
           isCompleted: false,
           isAbandoned: false,
           updatedAt: now,
