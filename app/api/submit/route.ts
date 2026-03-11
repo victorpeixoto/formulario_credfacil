@@ -25,16 +25,7 @@ export async function POST(req: NextRequest) {
     const contactId = uuidv4();
     const now = new Date().toISOString();
 
-    // Rodízio de números: verifica disponibilidade via Graph API
-    const availableNumber = await getAvailableWhatsAppNumber(contactId);
-    if (!availableNumber) {
-      return NextResponse.json(
-        { erro: 'Nenhum número disponível no momento. Nossa equipe já foi notificada. Tente novamente em breve.' },
-        { status: 503 }
-      );
-    }
-    const { whatsappLink } = availableNumber;
-
+    // Salva no MongoDB ANTES de verificar WhatsApp (garante registro mesmo se todos números estiverem indisponíveis)
     const client = await clientPromise;
     const db = client.db('credfacil');
     const col = db.collection('conversations');
@@ -66,6 +57,16 @@ export async function POST(req: NextRequest) {
       },
       { upsert: true }
     );
+
+    // Rodízio de números: verifica disponibilidade via Graph API
+    const availableNumber = await getAvailableWhatsAppNumber(contactId);
+    if (!availableNumber) {
+      return NextResponse.json(
+        { erro: 'Nenhum número disponível no momento. Nossa equipe já foi notificada. Tente novamente em breve.' },
+        { status: 503 }
+      );
+    }
+    const { whatsappLink } = availableNumber;
 
     return NextResponse.json({ contactId, whatsappLink });
   } catch (err) {
