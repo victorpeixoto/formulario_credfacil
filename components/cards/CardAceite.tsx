@@ -7,9 +7,10 @@ interface Props {
   onChange: (v: boolean) => void;
   onAvancar: () => void;
   loading?: boolean;
+  onVoltar?: () => void;
 }
 
-export default function CardAceite({ aceito, onChange, onAvancar, loading }: Props) {
+export default function CardAceite({ aceito, onChange, onAvancar, loading, onVoltar }: Props) {
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -57,6 +58,7 @@ export default function CardAceite({ aceito, onChange, onAvancar, loading }: Pro
         disabled={!aceito}
         label="Enviar solicitação"
         loading={loading}
+        onVoltar={onVoltar}
       />
     </div>
   );

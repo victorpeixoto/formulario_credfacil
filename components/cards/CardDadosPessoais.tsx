@@ -10,6 +10,7 @@ interface Props {
   enderecoCompleto: string;
   onChange: (campo: string, valor: string) => void;
   onAvancar: () => void;
+  onVoltar?: () => void;
 }
 
 interface Endereco {
@@ -34,7 +35,7 @@ function montarEnderecoCompleto(e: Endereco): string {
   return partes.join(', ');
 }
 
-export default function CardDadosPessoais({ nomeCompleto, cpf, email, onChange, onAvancar }: Props) {
+export default function CardDadosPessoais({ nomeCompleto, cpf, email, onChange, onAvancar, onVoltar }: Props) {
   const [tocados, setTocados] = useState<Record<string, boolean>>({});
   const [endereco, setEndereco] = useState<Endereco>({ cep: '', logradouro: '', bairro: '', cidade: '', uf: '', numero: '' });
   const [buscandoCep, setBuscandoCep] = useState(false);
@@ -233,7 +234,7 @@ export default function CardDadosPessoais({ nomeCompleto, cpf, email, onChange, 
         )}
       </div>
 
-      <BotaoAvancar onClick={onAvancar} disabled={!podeContinuar} />
+      <BotaoAvancar onClick={onAvancar} disabled={!podeContinuar} onVoltar={onVoltar} />
     </div>
   );
 }

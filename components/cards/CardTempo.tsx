@@ -14,9 +14,10 @@ interface Props {
   valor: TempoAtuacao | null;
   onChange: (v: TempoAtuacao) => void;
   onAvancar: () => void;
+  onVoltar?: () => void;
 }
 
-export default function CardTempo({ valor, onChange, onAvancar }: Props) {
+export default function CardTempo({ valor, onChange, onAvancar, onVoltar }: Props) {
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -40,7 +41,7 @@ export default function CardTempo({ valor, onChange, onAvancar }: Props) {
         ))}
       </div>
 
-      <BotaoAvancar onClick={onAvancar} disabled={valor === null} />
+      <BotaoAvancar onClick={onAvancar} disabled={valor === null} onVoltar={onVoltar} />
     </div>
   );
 }

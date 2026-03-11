@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import clientPromise from '@/lib/mongodb';
+import { getAvailableWhatsAppNumber } from '@/lib/whatsapp-rotation';
 import type { PayloadSubmit } from '@/types/formulario';
 
 export async function POST(req: NextRequest) {
@@ -23,9 +24,16 @@ export async function POST(req: NextRequest) {
 
     const contactId = uuidv4();
     const now = new Date().toISOString();
-    const whatsappNumber = process.env.WHATSAPP_NUMBER ?? '';
-    const mensagem = encodeURIComponent(`Olá! Meu código é: ${contactId}`);
-    const whatsappLink = `https://wa.me/${whatsappNumber}?text=${mensagem}`;
+
+    // Rodízio de números: verifica disponibilidade via Graph API
+    const availableNumber = await getAvailableWhatsAppNumber(contactId);
+    if (!availableNumber) {
+      return NextResponse.json(
+        { erro: 'Nenhum número disponível no momento. Nossa equipe já foi notificada. Tente novamente em breve.' },
+        { status: 503 }
+      );
+    }
+    const { whatsappLink } = availableNumber;
 
     const client = await clientPromise;
     const db = client.db('credfacil');

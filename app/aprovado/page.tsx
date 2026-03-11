@@ -6,9 +6,7 @@ import { Suspense } from 'react';
 function ConteudoAprovado() {
   const params = useSearchParams();
   const id = params.get('id') ?? '';
-  const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '';
-  const mensagem = encodeURIComponent(`Olá! Meu código é: ${id}`);
-  const whatsappLink = `https://wa.me/${whatsappNumber}?text=${mensagem}`;
+  const whatsappLink = decodeURIComponent(params.get('link') ?? '');
 
   return (
     <main className="min-h-dvh bg-white flex flex-col items-center justify-center px-6 max-w-md mx-auto text-center gap-8">

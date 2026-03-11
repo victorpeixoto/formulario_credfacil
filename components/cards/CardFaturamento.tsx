@@ -14,9 +14,10 @@ interface Props {
   valor: FaixaFaturamento | null;
   onChange: (v: FaixaFaturamento) => void;
   onAvancar: () => void;
+  onVoltar?: () => void;
 }
 
-export default function CardFaturamento({ valor, onChange, onAvancar }: Props) {
+export default function CardFaturamento({ valor, onChange, onAvancar, onVoltar }: Props) {
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -40,7 +41,7 @@ export default function CardFaturamento({ valor, onChange, onAvancar }: Props) {
         ))}
       </div>
 
-      <BotaoAvancar onClick={onAvancar} disabled={valor === null} />
+      <BotaoAvancar onClick={onAvancar} disabled={valor === null} onVoltar={onVoltar} />
     </div>
   );
 }

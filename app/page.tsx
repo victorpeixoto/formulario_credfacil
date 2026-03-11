@@ -77,6 +77,10 @@ export default function Home() {
     setCard(1);
   }
 
+  function voltar() {
+    setCard((c) => Math.max(1, c - 1));
+  }
+
   function avancar() {
     setCard((c) => c + 1);
   }
@@ -120,7 +124,8 @@ export default function Home() {
 
       const data = await res.json();
       localStorage.removeItem(DRAFT_KEY);
-      router.push(`/aprovado?id=${data.contactId}`);
+      const link = encodeURIComponent(data.whatsappLink);
+      router.push(`/aprovado?id=${data.contactId}&link=${link}`);
     } catch {
       setLoading(false);
       alert('Ocorreu um erro ao enviar. Tente novamente.');
@@ -183,6 +188,7 @@ export default function Home() {
               valor={estado.tempoAtuacao}
               onChange={(v) => setEstado((e) => ({ ...e, tempoAtuacao: v }))}
               onAvancar={avancar}
+              onVoltar={voltar}
             />
           )}
           {card === 3 && (
@@ -190,6 +196,7 @@ export default function Home() {
               valor={estado.ultimaEntrega}
               onChange={(v) => setEstado((e) => ({ ...e, ultimaEntrega: v }))}
               onAvancar={avancar}
+              onVoltar={voltar}
             />
           )}
           {card === 4 && (
@@ -197,6 +204,7 @@ export default function Home() {
               valor={estado.faturamento}
               onChange={(v) => setEstado((e) => ({ ...e, faturamento: v }))}
               onAvancar={avaliarEAvancar}
+              onVoltar={voltar}
             />
           )}
           {card === 5 && (
@@ -204,6 +212,7 @@ export default function Home() {
               valor={estado.referencias}
               onChange={(refs) => setEstado((e) => ({ ...e, referencias: refs }))}
               onAvancar={avancar}
+              onVoltar={voltar}
             />
           )}
           {card === 6 && (
@@ -214,6 +223,7 @@ export default function Home() {
               enderecoCompleto={estado.enderecoCompleto}
               onChange={atualizarCampo}
               onAvancar={avancar}
+              onVoltar={voltar}
             />
           )}
           {card === 7 && (
@@ -222,6 +232,7 @@ export default function Home() {
               onChange={(v) => setEstado((e) => ({ ...e, aceitouCondicoes: v }))}
               onAvancar={enviar}
               loading={loading}
+              onVoltar={voltar}
             />
           )}
         </CardWrapper>

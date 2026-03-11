@@ -8,6 +8,7 @@ interface Props {
   valor: Referencia[];
   onChange: (refs: Referencia[]) => void;
   onAvancar: () => void;
+  onVoltar?: () => void;
 }
 
 const TOTAL = 4;
@@ -19,7 +20,7 @@ function telRepetido(refs: Referencia[], tel: string): boolean {
   return refs.some((r) => r.telefone.replace(/\D/g, '').slice(-8) === base);
 }
 
-export default function CardReferencias({ valor, onChange, onAvancar }: Props) {
+export default function CardReferencias({ valor, onChange, onAvancar, onVoltar }: Props) {
   const [novo, setNovo] = useState<Referencia>(vazio);
   const [erro, setErro] = useState('');
 
@@ -104,7 +105,7 @@ export default function CardReferencias({ valor, onChange, onAvancar }: Props) {
         </div>
       )}
 
-      <BotaoAvancar onClick={onAvancar} disabled={valor.length < TOTAL} />
+      <BotaoAvancar onClick={onAvancar} disabled={valor.length < TOTAL} onVoltar={onVoltar} />
     </div>
   );
 }
