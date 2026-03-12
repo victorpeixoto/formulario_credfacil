@@ -15,6 +15,7 @@ import CardApresentacao from '@/components/CardApresentacao';
 import { FlagValues } from 'flags/react';
 import { candidatoAprovado } from '@/lib/avaliar';
 import type { EstadoFormulario, PayloadSubmit } from '@/types/formulario';
+import { track } from '@vercel/analytics';
 
 const DRAFT_KEY = 'cf_draft';
 const TOTAL_CARDS = 7;
@@ -90,6 +91,11 @@ export default function Home() {
     const { faturamento, tempoAtuacao, ultimaEntrega } = estado;
     if (!faturamento || !tempoAtuacao || !ultimaEntrega) return;
     if (!candidatoAprovado(faturamento, tempoAtuacao, ultimaEntrega)) {
+      track('form_auto_reproval', { 
+        faturamento, 
+        tempoAtuacao, 
+        ultimaEntrega 
+      });
       localStorage.removeItem(DRAFT_KEY);
       router.push('/reprovado');
       return;
@@ -124,6 +130,7 @@ export default function Home() {
       if (!res.ok) throw new Error('Erro no servidor');
 
       const data = await res.json();
+      track('form_completed', { contactId: data.contactId });
       localStorage.removeItem(DRAFT_KEY);
       const link = encodeURIComponent(data.whatsappLink);
       router.push(`/aprovado?id=${data.contactId}&link=${link}`);

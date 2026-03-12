@@ -1,6 +1,14 @@
+'use client';
+
 import { FlagValues } from 'flags/react';
+import { track } from '@vercel/analytics';
+import { useEffect } from 'react';
 
 export default function PageReprovado() {
+  useEffect(() => {
+    track('form_reproved');
+  }, []);
+
   return (
     <main className="min-h-dvh bg-white flex flex-col items-center justify-center px-6 max-w-md mx-auto text-center gap-6">
       <FlagValues values={{ resultado: 'reprovado' }} />

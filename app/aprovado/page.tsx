@@ -3,11 +3,16 @@
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import { FlagValues } from 'flags/react';
+import { track } from '@vercel/analytics';
 
 function ConteudoAprovado() {
   const params = useSearchParams();
   const id = params.get('id') ?? '';
   const whatsappLink = decodeURIComponent(params.get('link') ?? '');
+
+  const handleWhatsAppClick = () => {
+    track('whatsapp_click', { contactId: id });
+  };
 
   return (
     <main className="min-h-dvh bg-white flex flex-col items-center justify-center px-6 max-w-md mx-auto text-center gap-8">
@@ -35,6 +40,7 @@ function ConteudoAprovado() {
 
       <a
         href={whatsappLink}
+        onClick={handleWhatsAppClick}
         target="_blank"
         rel="noopener noreferrer"
         className="w-full py-4 rounded-2xl bg-green-500 hover:bg-green-600 active:scale-95 text-white font-semibold text-lg text-center transition-all duration-200 block"
