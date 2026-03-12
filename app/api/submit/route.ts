@@ -59,7 +59,6 @@ export async function POST(req: NextRequest) {
           qualificacao_motivo: null,
           historico: [],
           dadosConfirmados: false,
-          origem: 'formulario',
         },
         $setOnInsert: { createdAt: now },
       },
