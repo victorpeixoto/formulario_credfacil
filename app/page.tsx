@@ -12,6 +12,7 @@ import CardReferencias from '@/components/cards/CardReferencias';
 import CardDadosPessoais from '@/components/cards/CardDadosPessoais';
 import CardAceite from '@/components/cards/CardAceite';
 import CardApresentacao from '@/components/CardApresentacao';
+import { track } from '@vercel/analytics/react';
 import { candidatoAprovado } from '@/lib/avaliar';
 import type { EstadoFormulario, PayloadSubmit } from '@/types/formulario';
 
@@ -82,6 +83,7 @@ export default function Home() {
   }
 
   function avancar() {
+    track('etapa_continuar', { etapa: card });
     setCard((c) => c + 1);
   }
 
@@ -89,6 +91,7 @@ export default function Home() {
     const { faturamento, tempoAtuacao, ultimaEntrega } = estado;
     if (!faturamento || !tempoAtuacao || !ultimaEntrega) return;
     if (!candidatoAprovado(faturamento, tempoAtuacao, ultimaEntrega)) {
+      track('reprovado');
       localStorage.removeItem(DRAFT_KEY);
       router.push('/reprovado');
       return;
@@ -123,6 +126,7 @@ export default function Home() {
       if (!res.ok) throw new Error('Erro no servidor');
 
       const data = await res.json();
+      track('formulario_concluido');
       localStorage.removeItem(DRAFT_KEY);
       const link = encodeURIComponent(data.whatsappLink);
       router.push(`/aprovado?id=${data.contactId}&link=${link}`);
