@@ -12,7 +12,7 @@ import CardReferencias from '@/components/cards/CardReferencias';
 import CardDadosPessoais from '@/components/cards/CardDadosPessoais';
 import CardAceite from '@/components/cards/CardAceite';
 import CardApresentacao from '@/components/CardApresentacao';
-import { track } from '@vercel/analytics/react';
+import { FlagValues } from 'flags/react';
 import { candidatoAprovado } from '@/lib/avaliar';
 import type { EstadoFormulario, PayloadSubmit } from '@/types/formulario';
 
@@ -83,7 +83,6 @@ export default function Home() {
   }
 
   function avancar() {
-    track('etapa_continuar', { etapa: card });
     setCard((c) => c + 1);
   }
 
@@ -91,7 +90,6 @@ export default function Home() {
     const { faturamento, tempoAtuacao, ultimaEntrega } = estado;
     if (!faturamento || !tempoAtuacao || !ultimaEntrega) return;
     if (!candidatoAprovado(faturamento, tempoAtuacao, ultimaEntrega)) {
-      track('reprovado');
       localStorage.removeItem(DRAFT_KEY);
       router.push('/reprovado');
       return;
@@ -126,7 +124,6 @@ export default function Home() {
       if (!res.ok) throw new Error('Erro no servidor');
 
       const data = await res.json();
-      track('formulario_concluido');
       localStorage.removeItem(DRAFT_KEY);
       const link = encodeURIComponent(data.whatsappLink);
       router.push(`/aprovado?id=${data.contactId}&link=${link}`);
@@ -172,6 +169,7 @@ export default function Home() {
 
   return (
     <main className="min-h-dvh bg-white flex flex-col w-full max-w-lg mx-auto sm:border-x sm:border-gray-100 sm:shadow-sm">
+      <FlagValues values={{ etapa: `etapa_${card}` }} />
       <div className="px-6 pt-8 pb-4">
         <p className="text-xs font-semibold text-green-600 uppercase tracking-widest mb-3">Credfácil</p>
         <ProgressBar atual={card} total={TOTAL_CARDS} />

@@ -1,6 +1,9 @@
+import { FlagValues } from 'flags/react';
+
 export default function PageReprovado() {
   return (
     <main className="min-h-dvh bg-white flex flex-col items-center justify-center px-6 max-w-md mx-auto text-center gap-6">
+      <FlagValues values={{ resultado: 'reprovado' }} />
       <div className="flex flex-col items-center gap-4">
         <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center">
           <svg className="w-10 h-10 text-gray-400" fill="none" viewBox="0 0 24 24">

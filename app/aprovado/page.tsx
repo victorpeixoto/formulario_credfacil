@@ -2,7 +2,7 @@
 
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
-import { track } from '@vercel/analytics/react';
+import { FlagValues } from 'flags/react';
 
 function ConteudoAprovado() {
   const params = useSearchParams();
@@ -11,6 +11,7 @@ function ConteudoAprovado() {
 
   return (
     <main className="min-h-dvh bg-white flex flex-col items-center justify-center px-6 max-w-md mx-auto text-center gap-8">
+      <FlagValues values={{ resultado: 'aprovado' }} />
       <div className="flex flex-col items-center gap-4">
         <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
           <svg className="w-10 h-10 text-green-500" fill="none" viewBox="0 0 24 24">
@@ -36,7 +37,6 @@ function ConteudoAprovado() {
         href={whatsappLink}
         target="_blank"
         rel="noopener noreferrer"
-        onClick={() => track('clique_whatsapp')}
         className="w-full py-4 rounded-2xl bg-green-500 hover:bg-green-600 active:scale-95 text-white font-semibold text-lg text-center transition-all duration-200 block"
       >
         Falar no WhatsApp
