@@ -90,9 +90,15 @@ export async function getAvailableWhatsAppNumber(contactId: string): Promise<Ava
     return null;
   }
 
+  // Embaralha as inboxes para garantir aleatoriedade no rodízio e não pegar sempre o mesmo
+  const shuffledInboxes = inboxes
+    .map(value => ({ value, sort: Math.random() }))
+    .sort((a, b) => a.sort - b.sort)
+    .map(({ value }) => value);
+
   const checked: { name: string; phone: string; status: string }[] = [];
 
-  for (const inbox of inboxes) {
+  for (const inbox of shuffledInboxes) {
     const phoneNumberId = inbox.provider_config!.phone_number_id!;
     const apiKey = inbox.provider_config!.api_key!;
 
