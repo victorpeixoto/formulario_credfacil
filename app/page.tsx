@@ -104,14 +104,20 @@ export default function Home() {
   }
 
   async function enviar() {
+    // Validação extra de segurança
+    if (!estado.faturamento || !estado.tempoAtuacao || !estado.ultimaEntrega) {
+      alert('Por favor, preencha todas as etapas antes de enviar.');
+      return;
+    }
+
     setLoading(true);
     try {
       const payload: PayloadSubmit = {
         trabalho: {
           apps: estado.apps,
-          tempoAtuacao: estado.tempoAtuacao!,
-          ultimaCorridaData: estado.ultimaEntrega!,
-          faturamentoBruto: estado.faturamento!,
+          tempoAtuacao: estado.tempoAtuacao,
+          ultimaCorridaData: estado.ultimaEntrega,
+          faturamentoBruto: estado.faturamento,
         },
         referencias: estado.referencias,
         nomeCompleto: estado.nomeCompleto,

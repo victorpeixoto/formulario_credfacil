@@ -10,11 +10,12 @@ export async function POST(req: NextRequest) {
 
     const { trabalho, referencias, nomeCompleto, cpf, email, enderecoCompleto, aceitouCondicoes } = body;
 
-    // Validação server-side
-    if (!trabalho?.apps?.length) return NextResponse.json({ erro: 'Apps obrigatório.' }, { status: 400 });
-    if (!trabalho.tempoAtuacao) return NextResponse.json({ erro: 'Tempo de atuação obrigatório.' }, { status: 400 });
-    if (!trabalho.ultimaCorridaData) return NextResponse.json({ erro: 'Última corrida obrigatória.' }, { status: 400 });
-    if (!trabalho.faturamentoBruto) return NextResponse.json({ erro: 'Faturamento obrigatório.' }, { status: 400 });
+    // Validação server-side rigorosa
+    if (!trabalho?.apps?.length) return NextResponse.json({ erro: 'Selecione ao menos um App.' }, { status: 400 });
+    if (!trabalho.tempoAtuacao || trabalho.tempoAtuacao === null) return NextResponse.json({ erro: 'Tempo de atuação é obrigatório.' }, { status: 400 });
+    if (!trabalho.ultimaCorridaData || trabalho.ultimaCorridaData === null) return NextResponse.json({ erro: 'Data da última corrida é obrigatória.' }, { status: 400 });
+    if (!trabalho.faturamentoBruto || trabalho.faturamentoBruto === null) return NextResponse.json({ erro: 'Faturamento é obrigatório.' }, { status: 400 });
+    
     if (!referencias || referencias.length < 4) return NextResponse.json({ erro: 'Mínimo 4 referências.' }, { status: 400 });
     if (!nomeCompleto?.trim()) return NextResponse.json({ erro: 'Nome obrigatório.' }, { status: 400 });
     if (!cpf || cpf.replace(/\D/g, '').length !== 11) return NextResponse.json({ erro: 'CPF inválido.' }, { status: 400 });
