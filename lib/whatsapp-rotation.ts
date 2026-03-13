@@ -1,6 +1,6 @@
 import { sendTelegramAlert } from './telegram-alert';
 
-const IGNORED_INBOX_IDS = [1, 3, 9, 13, 15, 16, 22, 24];
+const IGNORED_INBOX_IDS = [1, 3, 9, 13, 15, 16, 21, 22, 24];
 
 interface ChatwootInbox {
   id: number;
