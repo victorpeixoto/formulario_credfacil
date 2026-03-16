@@ -15,6 +15,9 @@ export const metadata: Metadata = {
   icons: {
     icon: "/icon.svg",
   },
+  other: {
+    "facebook-domain-verification": "ojvpf1p9f4wphbmk7vkntf20f45d9i",
+  },
 };
 
 export const viewport: Viewport = {
