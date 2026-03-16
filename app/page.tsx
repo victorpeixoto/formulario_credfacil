@@ -137,6 +137,9 @@ export default function Home() {
 
       const data = await res.json();
       track('form_completed', { contactId: data.contactId });
+      if (typeof window !== 'undefined' && (window as any).fbq) {
+        (window as any).fbq('track', 'Lead');
+      }
       localStorage.removeItem(DRAFT_KEY);
       const link = encodeURIComponent(data.whatsappLink);
       router.push(`/aprovado?id=${data.contactId}&link=${link}`);

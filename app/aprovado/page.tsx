@@ -1,7 +1,7 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 import { FlagValues } from 'flags/react';
 import { track } from '@vercel/analytics';
 
@@ -9,6 +9,12 @@ function ConteudoAprovado() {
   const params = useSearchParams();
   const id = params.get('id') ?? '';
   const whatsappLink = decodeURIComponent(params.get('link') ?? '');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).fbq) {
+      (window as any).fbq('track', 'CompleteRegistration');
+    }
+  }, []);
 
   const handleWhatsAppClick = () => {
     track('whatsapp_click', { contactId: id });
