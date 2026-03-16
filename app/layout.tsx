@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     icon: "/icon.svg",
   },
   other: {
-    "facebook-domain-verification": "ojvpf1p9f4wphbmk7vkntf20f45d9i",
+    "facebook-domain-verification": "ugv02t2hcer8gjz9dfrf21f3xpyvjo",
   },
 };
 
