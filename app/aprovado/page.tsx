@@ -1,19 +1,64 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { Suspense, useEffect } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { FlagValues } from 'flags/react';
 import { track } from '@vercel/analytics';
+
+interface UserData {
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+}
 
 function ConteudoAprovado() {
   const params = useSearchParams();
   const id = params.get('id') ?? '';
   const whatsappLink = decodeURIComponent(params.get('link') ?? '');
+  const [isSendingCAPI, setIsSendingCAPI] = useState(false);
 
   useEffect(() => {
+    const sendCompleteRegistrationEvent = async () => {
+      if (typeof window === 'undefined') return;
+
+      const userDataStr = localStorage.getItem('cf_user_data');
+      if (!userDataStr) return;
+
+      try {
+        const userData: UserData = JSON.parse(userDataStr);
+        
+        if (userData.email || userData.firstName || userData.lastName) {
+          setIsSendingCAPI(true);
+          
+          const response = await fetch('/api/meta-capi', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              eventName: 'CompleteRegistration',
+              userData: {
+                email: userData.email,
+                firstName: userData.firstName,
+                lastName: userData.lastName,
+              },
+            }),
+          });
+
+          if (response.ok) {
+            localStorage.removeItem('cf_user_data');
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao enviar evento CAPI:', error);
+      } finally {
+        setIsSendingCAPI(false);
+      }
+    };
+
     if (typeof window !== 'undefined' && (window as any).fbq) {
       (window as any).fbq('track', 'CompleteRegistration');
     }
+
+    sendCompleteRegistrationEvent();
   }, []);
 
   const handleWhatsAppClick = () => {
