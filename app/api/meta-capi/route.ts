@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       userData,
       customData,
       eventSourceUrl,
-      actionSource: 'WEBSITE',
+      actionSource: 'website',
     });
 
     if (success) {

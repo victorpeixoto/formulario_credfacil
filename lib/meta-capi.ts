@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 
-const META_API_URL = 'https://graph.facebook.com/v18.0';
+const META_API_URL = 'https://graph.facebook.com/v21.0';
 
 interface UserData {
   email?: string;
@@ -17,7 +17,7 @@ interface CAPIEvent {
   userData: UserData;
   customData?: Record<string, unknown>;
   eventSourceUrl?: string;
-  actionSource: 'WEBSITE' | 'APP' | 'EMAIL' | 'PHONE_CALL' | 'CHAT' | 'SMS' | 'PHYSICAL_STORE' | 'SYSTEM' | 'OTHER';
+  actionSource: 'website' | 'app' | 'email' | 'phone_call' | 'chat' | 'sms' | 'physical_store' | 'system_generated' | 'other';
 }
 
 function sha256(value: string): string {
@@ -67,7 +67,7 @@ export async function sendMetaCAPIEvent(event: CAPIEvent): Promise<boolean> {
         event_name: event.eventName,
         event_time: eventTime,
         event_id: eventId,
-        action_source: event.actionSource || 'WEBSITE',
+        action_source: event.actionSource || 'website',
         event_source_url: event.eventSourceUrl,
         user_data: hashUserData(event.userData),
         custom_data: event.customData || {},
