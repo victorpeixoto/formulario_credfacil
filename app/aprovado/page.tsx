@@ -42,6 +42,7 @@ function ConteudoAprovado() {
                 firstName: parsed.firstName,
                 lastName: parsed.lastName,
               },
+              eventSourceUrl: window.location.href,
             }),
           });
         }
@@ -76,6 +77,11 @@ function ConteudoAprovado() {
           firstName: userData?.firstName,
           lastName: userData?.lastName,
         },
+        customData: {
+          currency: 'BRL',
+          value: '0.00',
+        },
+        eventSourceUrl: window.location.href,
       }),
     }).finally(() => {
       localStorage.removeItem('cf_user_data');

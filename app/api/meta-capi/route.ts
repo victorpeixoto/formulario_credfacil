@@ -13,9 +13,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const clientUserAgent = request.headers.get('user-agent') || '';
+
     const success = await sendMetaCAPIEvent({
       eventName,
-      userData,
+      userData: { ...userData, clientUserAgent },
       customData,
       eventSourceUrl,
       actionSource: 'website',
