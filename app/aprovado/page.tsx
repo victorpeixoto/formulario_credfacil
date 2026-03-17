@@ -63,14 +63,14 @@ function ConteudoAprovado() {
     track('whatsapp_click', { contactId: id });
 
     if (typeof window !== 'undefined' && (window as any).fbq) {
-      (window as any).fbq('trackCustom', 'EndForm');
+      (window as any).fbq('track', 'Purchase');
     }
 
     fetch('/api/meta-capi', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        eventName: 'EndForm',
+        eventName: 'Purchase',
         userData: {
           email: userData?.email,
           firstName: userData?.firstName,
