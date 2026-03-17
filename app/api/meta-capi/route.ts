@@ -14,10 +14,14 @@ export async function POST(request: NextRequest) {
     }
 
     const clientUserAgent = request.headers.get('user-agent') || '';
+    const clientIpAddress =
+      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      request.headers.get('x-real-ip') ||
+      '';
 
     const success = await sendMetaCAPIEvent({
       eventName,
-      userData: { ...userData, clientUserAgent },
+      userData: { ...userData, clientUserAgent, clientIpAddress },
       customData,
       eventSourceUrl,
       actionSource: 'website',

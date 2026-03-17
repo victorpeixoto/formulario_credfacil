@@ -11,6 +11,11 @@ interface UserData {
   lastName?: string;
 }
 
+function getCookie(name: string): string | undefined {
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+  return match?.[2];
+}
+
 function ConteudoAprovado() {
   const params = useSearchParams();
   const id = params.get('id') ?? '';
@@ -41,6 +46,8 @@ function ConteudoAprovado() {
                 email: parsed.email,
                 firstName: parsed.firstName,
                 lastName: parsed.lastName,
+                fbc: getCookie('_fbc'),
+                fbp: getCookie('_fbp'),
               },
               eventSourceUrl: window.location.href,
             }),
@@ -64,7 +71,10 @@ function ConteudoAprovado() {
     track('whatsapp_click', { contactId: id });
 
     if (typeof window !== 'undefined' && (window as any).fbq) {
-      (window as any).fbq('track', 'Purchase');
+      (window as any).fbq('track', 'Purchase', {
+        currency: 'BRL',
+        value: 0.00,
+      });
     }
 
     fetch('/api/meta-capi', {
@@ -76,10 +86,12 @@ function ConteudoAprovado() {
           email: userData?.email,
           firstName: userData?.firstName,
           lastName: userData?.lastName,
+          fbc: getCookie('_fbc'),
+          fbp: getCookie('_fbp'),
         },
         customData: {
           currency: 'BRL',
-          value: '0.00',
+          value: 0.00,
         },
         eventSourceUrl: window.location.href,
       }),

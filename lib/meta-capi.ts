@@ -10,6 +10,9 @@ interface UserData {
   city?: string;
   country?: string;
   clientUserAgent?: string;
+  clientIpAddress?: string;
+  fbc?: string;
+  fbp?: string;
 }
 
 interface CAPIEvent {
@@ -28,6 +31,7 @@ function sha256(value: string): string {
 function buildUserData(userData: UserData): Record<string, unknown> {
   const result: Record<string, unknown> = {};
 
+  // Hashed fields (string or list<string>)
   if (userData.email) {
     result.em = [sha256(userData.email)];
   }
@@ -46,8 +50,19 @@ function buildUserData(userData: UserData): Record<string, unknown> {
   if (userData.country) {
     result.country = [sha256(userData.country)];
   }
+
+  // Non-hashed fields
   if (userData.clientUserAgent) {
     result.client_user_agent = userData.clientUserAgent;
+  }
+  if (userData.clientIpAddress) {
+    result.client_ip_address = userData.clientIpAddress;
+  }
+  if (userData.fbc) {
+    result.fbc = userData.fbc;
+  }
+  if (userData.fbp) {
+    result.fbp = userData.fbp;
   }
 
   return result;

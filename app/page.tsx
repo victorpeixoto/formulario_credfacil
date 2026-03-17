@@ -140,6 +140,8 @@ export default function Home() {
       if (typeof window !== 'undefined' && (window as any).fbq) {
         (window as any).fbq('track', 'Lead');
       }
+      const fbc = document.cookie.match(/(^| )_fbc=([^;]+)/)?.[2];
+      const fbp = document.cookie.match(/(^| )_fbp=([^;]+)/)?.[2];
       await fetch('/api/meta-capi', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -149,7 +151,10 @@ export default function Home() {
             email: estado.email,
             firstName: estado.nomeCompleto.split(' ')[0],
             lastName: estado.nomeCompleto.split(' ').slice(1).join(' ') || undefined,
+            fbc,
+            fbp,
           },
+          eventSourceUrl: window.location.href,
         }),
       });
       localStorage.removeItem(DRAFT_KEY);
