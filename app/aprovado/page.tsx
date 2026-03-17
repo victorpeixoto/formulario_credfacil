@@ -16,6 +16,7 @@ function ConteudoAprovado() {
   const id = params.get('id') ?? '';
   const whatsappLink = decodeURIComponent(params.get('link') ?? '');
   const [isSendingCAPI, setIsSendingCAPI] = useState(false);
+  const [userData, setUserData] = useState<UserData | null>(null);
 
   useEffect(() => {
     const sendCompleteRegistrationEvent = async () => {
@@ -25,27 +26,24 @@ function ConteudoAprovado() {
       if (!userDataStr) return;
 
       try {
-        const userData: UserData = JSON.parse(userDataStr);
-        
-        if (userData.email || userData.firstName || userData.lastName) {
+        const parsed: UserData = JSON.parse(userDataStr);
+        setUserData(parsed);
+
+        if (parsed.email || parsed.firstName || parsed.lastName) {
           setIsSendingCAPI(true);
-          
-          const response = await fetch('/api/meta-capi', {
+
+          await fetch('/api/meta-capi', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               eventName: 'CompleteRegistration',
               userData: {
-                email: userData.email,
-                firstName: userData.firstName,
-                lastName: userData.lastName,
+                email: parsed.email,
+                firstName: parsed.firstName,
+                lastName: parsed.lastName,
               },
             }),
           });
-
-          if (response.ok) {
-            localStorage.removeItem('cf_user_data');
-          }
         }
       } catch (error) {
         console.error('Erro ao enviar evento CAPI:', error);
@@ -63,6 +61,25 @@ function ConteudoAprovado() {
 
   const handleWhatsAppClick = () => {
     track('whatsapp_click', { contactId: id });
+
+    if (typeof window !== 'undefined' && (window as any).fbq) {
+      (window as any).fbq('trackCustom', 'EndForm');
+    }
+
+    fetch('/api/meta-capi', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        eventName: 'EndForm',
+        userData: {
+          email: userData?.email,
+          firstName: userData?.firstName,
+          lastName: userData?.lastName,
+        },
+      }),
+    }).finally(() => {
+      localStorage.removeItem('cf_user_data');
+    });
   };
 
   return (
