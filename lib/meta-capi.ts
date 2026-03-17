@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 
-const META_API_URL = 'https://graph.facebook.com/v25.0';
+const META_API_URL = 'https://graph.facebook.com/v18.0';
 
 interface UserData {
   email?: string;
