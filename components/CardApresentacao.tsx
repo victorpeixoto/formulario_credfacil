@@ -4,9 +4,10 @@ import { motion } from 'framer-motion';
 
 interface Props {
   onComecar: () => void;
+  onExistingUser: () => void;
 }
 
-export default function CardApresentacao({ onComecar }: Props) {
+export default function CardApresentacao({ onComecar, onExistingUser }: Props) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 24 }}
@@ -80,6 +81,12 @@ export default function CardApresentacao({ onComecar }: Props) {
             text-white font-semibold text-lg shadow-md shadow-green-200 transition-all duration-200"
         >
           Quero solicitar crédito
+        </button>
+        <button
+          onClick={onExistingUser}
+          className="w-full py-3 rounded-2xl border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-all duration-200"
+        >
+          Já sou cliente
         </button>
         <p className="text-xs text-gray-400 text-center leading-relaxed">
           Ao continuar, você concorda com o uso dos seus dados para análise de crédito.

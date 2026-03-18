@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import CardCPFExistente from '@/components/cards/CardCPFExistente';
 import { useRouter } from 'next/navigation';
 import CardWrapper from '@/components/CardWrapper';
 import ProgressBar from '@/components/ProgressBar';
@@ -16,6 +16,7 @@ import { FlagValues } from 'flags/react';
 import { candidatoAprovado } from '@/lib/avaliar';
 import type { EstadoFormulario, PayloadSubmit } from '@/types/formulario';
 import { track } from '@vercel/analytics';
+import { useEffect, useState } from 'react';
 
 const DRAFT_KEY = 'cf_draft';
 const TOTAL_CARDS = 7;
@@ -36,11 +37,13 @@ const estadoInicial: EstadoFormulario = {
 export default function Home() {
   const router = useRouter();
   const [started, setStarted] = useState(false);
+  const [showExistingUserFlow, setShowExistingUserFlow] = useState(false);
   const [card, setCard] = useState(1);
   const [estado, setEstado] = useState<EstadoFormulario>(estadoInicial);
   const [loading, setLoading] = useState(false);
   const [mostrarBanner, setMostrarBanner] = useState(false);
   const [rascunhoSalvo, setRascunhoSalvo] = useState<{ card: number; estado: EstadoFormulario } | null>(null);
+  const [cpfExistenteErro, setCpfExistenteErro] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     try {
@@ -171,11 +174,47 @@ export default function Home() {
     }
   }
 
+  // Novo: Lógica para verificar CPF existente
+  async function handleExistingCPFSubmit(cpf: string) {
+    setLoading(true);
+    setCpfExistenteErro(undefined);
+    try {
+      const res = await fetch('/api/check-cpf', { // Este endpoint será criado no próximo passo
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cpf }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.erro || 'Erro ao verificar CPF.');
+      }
+
+                if (data.exists) {
+        if (data.whatsappLink) {
+          router.push(`/suporte-whatsapp?link=${encodeURIComponent(data.whatsappLink)}`);
+        } else {
+          setCpfExistenteErro('Não foi possível gerar o link de suporte. Tente novamente.');
+        }
+      } else {
+        // CPF não encontrado, direcionar para novo formulário
+        setStarted(true);
+        setShowExistingUserFlow(false);
+      }
+    } catch (error: any) {
+      console.error('[handleExistingCPFSubmit] Erro:', error);
+      setCpfExistenteErro(error.message || 'Erro ao verificar CPF. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   function atualizarCampo(campo: string, valor: string) {
     setEstado((e) => ({ ...e, [campo]: valor }));
   }
 
-  if (!started) {
+  if (!started && !showExistingUserFlow) {
     return (
       <>
         {mostrarBanner && (
@@ -200,8 +239,23 @@ export default function Home() {
             </div>
           </div>
         )}
-        <CardApresentacao onComecar={() => setStarted(true)} />
+        <CardApresentacao onComecar={() => setStarted(true)} onExistingUser={() => setShowExistingUserFlow(true)} />
       </>
+    );
+  }
+
+  if (showExistingUserFlow) {
+    return (
+      <main className="min-h-dvh bg-white flex flex-col w-full max-w-lg mx-auto sm:border-x sm:border-gray-100 sm:shadow-sm">
+        <CardWrapper cardKey={0}> {/* cardKey 0 para este fluxo */}
+          <CardCPFExistente
+            onCPFSubmit={handleExistingCPFSubmit}
+            onVoltar={() => setShowExistingUserFlow(false)}
+            loading={loading}
+            erro={cpfExistenteErro}
+          />
+        </CardWrapper>
+      </main>
     );
   }
 

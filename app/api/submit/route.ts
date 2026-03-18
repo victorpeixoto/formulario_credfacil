@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
     );
 
     // Rodízio de números: verifica disponibilidade via Graph API
-    const availableNumber = await getAvailableWhatsAppNumber(formCode);
+    const availableNumber = await getAvailableWhatsAppNumber(existing?.contactId || formCode);
     if (!availableNumber) {
       return NextResponse.json(
         { erro: 'Nenhum número disponível no momento. Nossa equipe já foi notificada. Tente novamente em breve.' },
@@ -76,7 +76,19 @@ export async function POST(req: NextRequest) {
     }
     const { whatsappLink } = availableNumber;
 
-    return NextResponse.json({ contactId: formCode, whatsappLink });
+    // Segundo update para adicionar whatsappLink e finalizar status
+    await col.updateOne(
+      { cpf: cpfLimpo },
+      {
+        $set: {
+          whatsappLink,
+          isCompleted: true,
+          updatedAt: new Date().toISOString(), // Atualizar updatedAt novamente
+        },
+      }
+    );
+
+    return NextResponse.json({ contactId: existing?.contactId || formCode, whatsappLink });
   } catch (err) {
     console.error('[submit] erro:', err);
     return NextResponse.json({ erro: 'Erro interno.' }, { status: 500 });
