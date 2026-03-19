@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { formatarCPF, validarCPF } from '@/lib/validators';
 
 interface CardCPFExistenteProps {
   onCPFSubmit: (cpf: string) => void;
@@ -13,27 +14,15 @@ export default function CardCPFExistente({ onCPFSubmit, onVoltar, loading, erro 
   const [cpf, setCpf] = useState('');
 
   const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, ''); // Remove non-digits
-    // Format CPF as 000.000.000-00
-    let formattedCpf = value;
-    if (value.length > 3) {
-      formattedCpf = value.substring(0, 3) + '.' + value.substring(3);
-    }
-    if (value.length > 6) {
-      formattedCpf = value.substring(0, 3) + '.' + value.substring(3, 6) + '.' + value.substring(6);
-    }
-    if (value.length > 9) {
-      formattedCpf = value.substring(0, 3) + '.' + value.substring(3, 6) + '.' + value.substring(6, 9) + '-' + value.substring(9, 11);
-    }
-    setCpf(formattedCpf);
+    setCpf(formatarCPF(e.target.value));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (cpf.replace(/\D/g, '').length === 11) {
+    if (validarCPF(cpf)) {
       onCPFSubmit(cpf.replace(/\D/g, ''));
     } else {
-      alert('Por favor, insira um CPF válido.');
+      alert('CPF inválido. Verifique os dígitos e tente novamente.');
     }
   };
 

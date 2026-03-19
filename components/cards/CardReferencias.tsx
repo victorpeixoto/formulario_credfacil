@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import BotaoAvancar from '@/components/BotaoAvancar';
 import type { Referencia } from '@/types/formulario';
+import { formatarTelefone, validarTelefone } from '@/lib/validators';
 
 interface Props {
   valor: Referencia[];
@@ -30,8 +31,8 @@ export default function CardReferencias({ valor, onChange, onAvancar, onVoltar }
       setErro('Preencha nome, telefone e parentesco.');
       return;
     }
-    if (telefone.replace(/\D/g, '').length < 10) {
-      setErro('Telefone inválido. Inclua o DDD.');
+    if (!validarTelefone(telefone)) {
+      setErro('Telefone inválido. Inclua DDD + número (10 ou 11 dígitos).');
       return;
     }
     if (telRepetido(valor, telefone)) {
@@ -83,10 +84,11 @@ export default function CardReferencias({ valor, onChange, onAvancar, onVoltar }
             className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-green-400"
           />
           <input
-            placeholder="Telefone com DDD"
+            placeholder="(00) 00000-0000"
             value={novo.telefone}
-            onChange={(e) => setNovo({ ...novo, telefone: e.target.value })}
+            onChange={(e) => setNovo({ ...novo, telefone: formatarTelefone(e.target.value) })}
             type="tel"
+            inputMode="numeric"
             className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-green-400"
           />
           <input

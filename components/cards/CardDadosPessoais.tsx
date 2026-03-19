@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import BotaoAvancar from '@/components/BotaoAvancar';
+import { validarCPF, formatarCPF, validarEmail, validarNomeCompleto } from '@/lib/validators';
 
 interface Props {
   nomeCompleto: string;
@@ -20,14 +21,6 @@ interface Endereco {
   cidade: string;
   uf: string;
   numero: string;
-}
-
-function cpfValido(cpf: string): boolean {
-  return cpf.replace(/\D/g, '').length === 11;
-}
-
-function emailValido(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 function montarEnderecoCompleto(e: Endereco): string {
@@ -89,29 +82,30 @@ export default function CardDadosPessoais({ nomeCompleto, cpf, email, onChange, 
     }
   }
 
-  const cpfOk = cpfValido(cpf);
-  const emailOk = emailValido(email);
+  const nomeOk = validarNomeCompleto(nomeCompleto);
+  const cpfOk = validarCPF(cpf);
+  const emailOk = validarEmail(email);
   const enderecoOk = !!(endereco.logradouro && endereco.numero && endereco.cidade);
-  const podeContinuar = nomeCompleto.trim().length > 2 && cpfOk && emailOk && enderecoOk;
+  const podeContinuar = nomeOk && cpfOk && emailOk && enderecoOk;
 
   const camposTexto = [
     {
       key: 'nomeCompleto',
       label: 'Nome completo',
       valor: nomeCompleto,
-      placeholder: 'Como consta no documento',
+      placeholder: 'Nome e sobrenome como consta no documento',
       type: 'text',
       inputMode: undefined as React.HTMLAttributes<HTMLInputElement>['inputMode'],
-      erro: tocados['nomeCompleto'] && nomeCompleto.trim().length <= 2 ? 'Digite seu nome completo.' : '',
+      erro: tocados['nomeCompleto'] && !nomeOk ? 'Digite nome e sobrenome.' : '',
     },
     {
       key: 'cpf',
       label: 'CPF',
       valor: cpf,
-      placeholder: 'Apenas números (11 dígitos)',
+      placeholder: '000.000.000-00',
       type: 'text',
       inputMode: 'numeric' as React.HTMLAttributes<HTMLInputElement>['inputMode'],
-      erro: tocados['cpf'] && !cpfOk ? 'CPF deve ter 11 dígitos.' : '',
+      erro: tocados['cpf'] && !cpfOk ? 'CPF inválido.' : '',
     },
     {
       key: 'email',
@@ -144,7 +138,10 @@ export default function CardDadosPessoais({ nomeCompleto, cpf, email, onChange, 
             inputMode={c.inputMode}
             placeholder={c.placeholder}
             value={c.valor}
-            onChange={(e) => onChange(c.key, e.target.value)}
+            onChange={(e) => {
+              const val = c.key === 'cpf' ? formatarCPF(e.target.value) : e.target.value;
+              onChange(c.key, val);
+            }}
             onBlur={() => marcarTocado(c.key)}
             className={c.erro ? inputErro : inputNormal}
           />
