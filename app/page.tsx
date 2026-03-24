@@ -30,7 +30,13 @@ const estadoInicial: EstadoFormulario = {
   nomeCompleto: '',
   cpf: '',
   email: '',
-  enderecoCompleto: '',
+  logradouro: '',
+  numero: '',
+  complemento: '',
+  bairro: '',
+  cep: '',
+  cidade: '',
+  estadoUF: '',
   aceitouCondicoes: false,
 };
 
@@ -126,7 +132,13 @@ export default function Home() {
         nomeCompleto: estado.nomeCompleto,
         cpf: estado.cpf.replace(/\D/g, ''),
         email: estado.email,
-        enderecoCompleto: estado.enderecoCompleto,
+        logradouro: estado.logradouro,
+        numero: estado.numero,
+        complemento: estado.complemento,
+        bairro: estado.bairro,
+        cep: estado.cep,
+        cidade: estado.cidade,
+        estadoUF: estado.estadoUF,
         aceitouCondicoes: estado.aceitouCondicoes,
       };
 
@@ -314,7 +326,13 @@ export default function Home() {
               nomeCompleto={estado.nomeCompleto}
               cpf={estado.cpf}
               email={estado.email}
-              enderecoCompleto={estado.enderecoCompleto}
+              logradouro={estado.logradouro}
+              numero={estado.numero}
+              complemento={estado.complemento}
+              bairro={estado.bairro}
+              cep={estado.cep}
+              cidade={estado.cidade}
+              estadoUF={estado.estadoUF}
               onChange={atualizarCampo}
               onAvancar={avancar}
               onVoltar={voltar}

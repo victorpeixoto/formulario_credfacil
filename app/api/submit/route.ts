@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
   try {
     const body: PayloadSubmit = await req.json();
 
-    const { trabalho, referencias, nomeCompleto, cpf, email, enderecoCompleto, aceitouCondicoes } = body;
+    const { trabalho, referencias, nomeCompleto, cpf, email, logradouro, numero, complemento, bairro, cep, cidade, estadoUF, aceitouCondicoes } = body;
 
     // Validação server-side rigorosa
     if (!trabalho?.apps?.length) return NextResponse.json({ erro: 'Selecione ao menos um App.' }, { status: 400 });
@@ -20,7 +20,11 @@ export async function POST(req: NextRequest) {
     if (!nomeCompleto?.trim()) return NextResponse.json({ erro: 'Nome obrigatório.' }, { status: 400 });
     if (!cpf || cpf.replace(/\D/g, '').length !== 11) return NextResponse.json({ erro: 'CPF inválido.' }, { status: 400 });
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return NextResponse.json({ erro: 'E-mail inválido.' }, { status: 400 });
-    if (!enderecoCompleto?.trim()) return NextResponse.json({ erro: 'Endereço obrigatório.' }, { status: 400 });
+    if (!logradouro?.trim()) return NextResponse.json({ erro: 'Logradouro obrigatório.' }, { status: 400 });
+    if (!numero?.trim()) return NextResponse.json({ erro: 'Número obrigatório.' }, { status: 400 });
+    if (!cep || cep.replace(/\D/g, '').length !== 8) return NextResponse.json({ erro: 'CEP inválido.' }, { status: 400 });
+    if (!cidade?.trim()) return NextResponse.json({ erro: 'Cidade obrigatória.' }, { status: 400 });
+    if (!estadoUF?.trim()) return NextResponse.json({ erro: 'Estado obrigatório.' }, { status: 400 });
     if (!aceitouCondicoes) return NextResponse.json({ erro: 'Aceite obrigatório.' }, { status: 400 });
 
     const formCode = uuidv4();
@@ -50,7 +54,13 @@ export async function POST(req: NextRequest) {
           nomeCompleto,
           cpf: cpfLimpo,
           email,
-          enderecoCompleto,
+          logradouro,
+          numero,
+          complemento: complemento || '',
+          bairro: bairro || '',
+          cep: cep.replace(/\D/g, ''),
+          cidade,
+          estadoUF,
           trabalho,
           aceitouCondicoes,
           referencias,

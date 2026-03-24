@@ -8,29 +8,24 @@ interface Props {
   nomeCompleto: string;
   cpf: string;
   email: string;
-  enderecoCompleto: string;
+  logradouro: string;
+  numero: string;
+  complemento: string;
+  bairro: string;
+  cep: string;
+  cidade: string;
+  estadoUF: string;
   onChange: (campo: string, valor: string) => void;
   onAvancar: () => void;
   onVoltar?: () => void;
 }
 
-interface Endereco {
-  cep: string;
-  logradouro: string;
-  bairro: string;
-  cidade: string;
-  uf: string;
-  numero: string;
-}
-
-function montarEnderecoCompleto(e: Endereco): string {
-  const partes = [e.logradouro, e.numero, e.bairro, `${e.cidade} - ${e.uf}`, e.cep].filter(Boolean);
-  return partes.join(', ');
-}
-
-export default function CardDadosPessoais({ nomeCompleto, cpf, email, onChange, onAvancar, onVoltar }: Props) {
+export default function CardDadosPessoais({
+  nomeCompleto, cpf, email,
+  logradouro, numero, complemento, bairro, cep, cidade, estadoUF,
+  onChange, onAvancar, onVoltar,
+}: Props) {
   const [tocados, setTocados] = useState<Record<string, boolean>>({});
-  const [endereco, setEndereco] = useState<Endereco>({ cep: '', logradouro: '', bairro: '', cidade: '', uf: '', numero: '' });
   const [buscandoCep, setBuscandoCep] = useState(false);
   const [erroCep, setErroCep] = useState('');
   const [logradouroManual, setLogradouroManual] = useState(false);
@@ -39,8 +34,8 @@ export default function CardDadosPessoais({ nomeCompleto, cpf, email, onChange, 
     setTocados((t) => ({ ...t, [campo]: true }));
   }
 
-  async function buscarCep(cep: string) {
-    const apenasNumeros = cep.replace(/\D/g, '');
+  async function buscarCep(valor: string) {
+    const apenasNumeros = valor.replace(/\D/g, '');
     if (apenasNumeros.length !== 8) return;
 
     setBuscandoCep(true);
@@ -52,20 +47,13 @@ export default function CardDadosPessoais({ nomeCompleto, cpf, email, onChange, 
         setErroCep('CEP não encontrado.');
         return;
       }
-      const novo = {
-        ...endereco,
-        cep: apenasNumeros,
-        logradouro: data.logradouro || '',
-        bairro: data.bairro || '',
-        cidade: data.localidade || '',
-        uf: data.uf || '',
-      };
-      setEndereco(novo);
+      onChange('cep', apenasNumeros);
+      onChange('logradouro', data.logradouro || '');
+      onChange('bairro', data.bairro || '');
+      onChange('cidade', data.localidade || '');
+      onChange('estadoUF', data.uf || '');
       if (!data.logradouro) {
         setLogradouroManual(true);
-      }
-      if (data.logradouro && novo.cidade) {
-        onChange('enderecoCompleto', montarEnderecoCompleto(novo));
       }
     } catch {
       setErroCep('Erro ao buscar CEP. Tente novamente.');
@@ -74,18 +62,10 @@ export default function CardDadosPessoais({ nomeCompleto, cpf, email, onChange, 
     }
   }
 
-  function atualizarEndereco(campo: keyof Endereco, valor: string) {
-    const novo = { ...endereco, [campo]: valor };
-    setEndereco(novo);
-    if (novo.logradouro && novo.numero && novo.cidade) {
-      onChange('enderecoCompleto', montarEnderecoCompleto(novo));
-    }
-  }
-
   const nomeOk = validarNomeCompleto(nomeCompleto);
   const cpfOk = validarCPF(cpf);
   const emailOk = validarEmail(email);
-  const enderecoOk = !!(endereco.logradouro && endereco.numero && endereco.cidade);
+  const enderecoOk = !!(logradouro && numero && cep && cidade && estadoUF);
   const podeContinuar = nomeOk && cpfOk && emailOk && enderecoOk;
 
   const camposTexto = [
@@ -160,11 +140,11 @@ export default function CardDadosPessoais({ nomeCompleto, cpf, email, onChange, 
                 type="text"
                 inputMode="numeric"
                 placeholder="CEP (apenas números)"
-                value={endereco.cep}
+                value={cep}
                 maxLength={8}
                 onChange={(e) => {
                   const val = e.target.value.replace(/\D/g, '');
-                  atualizarEndereco('cep', val);
+                  onChange('cep', val);
                   if (val.length === 8) buscarCep(val);
                 }}
                 onBlur={() => marcarTocado('cep')}
@@ -184,41 +164,48 @@ export default function CardDadosPessoais({ nomeCompleto, cpf, email, onChange, 
               type="text"
               inputMode="numeric"
               placeholder="Número"
-              value={endereco.numero}
-              onChange={(e) => atualizarEndereco('numero', e.target.value)}
+              value={numero}
+              onChange={(e) => onChange('numero', e.target.value)}
               className={inputNormal}
             />
           </div>
         </div>
 
-        {(endereco.logradouro || logradouroManual) && endereco.cidade && (
+        {(logradouro || logradouroManual) && cidade && (
           <div className="flex flex-col gap-2">
             {logradouroManual ? (
               <input
                 type="text"
                 placeholder="Rua, Av, Travessa..."
-                value={endereco.logradouro}
-                onChange={(e) => atualizarEndereco('logradouro', e.target.value)}
+                value={logradouro}
+                onChange={(e) => onChange('logradouro', e.target.value)}
                 className={inputNormal}
               />
             ) : (
               <input
                 type="text"
-                value={endereco.logradouro}
+                value={logradouro}
                 readOnly
                 className={inputPreenchido}
               />
             )}
+            <input
+              type="text"
+              placeholder="Complemento (opcional)"
+              value={complemento}
+              onChange={(e) => onChange('complemento', e.target.value)}
+              className={inputNormal}
+            />
             <div className="flex gap-2">
               <input
                 type="text"
-                value={endereco.bairro}
+                value={bairro}
                 readOnly
                 className={`${inputPreenchido} flex-1`}
               />
               <input
                 type="text"
-                value={`${endereco.cidade} - ${endereco.uf}`}
+                value={`${cidade} - ${estadoUF}`}
                 readOnly
                 className={`${inputPreenchido} flex-1`}
               />

@@ -27,7 +27,13 @@ export interface EstadoFormulario {
   nomeCompleto: string;
   cpf: string;
   email: string;
-  enderecoCompleto: string;
+  logradouro: string;
+  numero: string;
+  complemento: string;
+  bairro: string;
+  cep: string;
+  cidade: string;
+  estadoUF: string;
   // Card 7
   aceitouCondicoes: boolean;
 }
@@ -43,7 +49,13 @@ export interface PayloadSubmit {
   nomeCompleto: string;
   cpf: string;
   email: string;
-  enderecoCompleto: string;
+  logradouro: string;
+  numero: string;
+  complemento: string;
+  bairro: string;
+  cep: string;
+  cidade: string;
+  estadoUF: string;
   aceitouCondicoes: boolean;
 }
 
