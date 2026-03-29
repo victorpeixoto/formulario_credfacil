@@ -102,7 +102,7 @@ async function executarPipeline(
 
       if (tipo !== 'biometria') {
         const tipoDoc = tipo as TipoDocumento;
-        const tentativasAnterior = (docAtual as Record<string, { tentativas?: number }>)[tipoDoc]?.tentativas ?? 0;
+        const tentativasAnterior = (docAtual as unknown as Record<string, { tentativas?: number }>)[tipoDoc]?.tentativas ?? 0;
         await updateStatus(tipoDoc, {
           url: fileKeys[tipoDoc] ?? docAtual[tipoDoc as keyof DocumentosMap]?.url,
           status: r.aprovado ? 'aprovado' : 'rejeitado',
