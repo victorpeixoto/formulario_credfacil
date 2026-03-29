@@ -85,7 +85,54 @@
 
 ---
 
-## Milestone 4 — Melhorias Futuras
+## Milestone 4 — Validação de Documentos com IA
+
+**Goal:** Automatizar validação de documentos com IA, substituindo o envio manual via WhatsApp
+**Status:** Planning complete — Ready for implementation
+
+### Features
+
+**Migração para VPS (Coolify)** - PLANNED
+
+- Dockerfile de produção (Node 20 Alpine, standalone output)
+- Novo serviço no Coolify com SSL via Traefik
+- MongoDB acessado via rede interna Docker
+
+**Autenticação do Candidato** - PLANNED
+
+- Login CPF + senha (bcrypt + JWT httpOnly)
+- Auto-login após cadastro de senha no /aprovado
+- Recuperação de senha via email
+- Middleware protegendo rotas /(auth)/*
+
+**Upload de Documentos** - PLANNED
+
+- 5 documentos: CNH, Comprovante, Selfie+Veículo, Vídeo App, Vídeo Veículo
+- Upload direto para Cloudflare R2 via presigned URLs
+- Validação client-side (formato, tamanho)
+
+**Pipeline de Validação com IA** - PLANNED
+
+- Gemini Flash: OCR de CNH e comprovante, análise de vídeos, extração de placa
+- AWS Rekognition: comparação facial (selfie vs CNH)
+- Cruzamento de dados: nome, CPF, placa, biometria
+- Orquestração via Promise.allSettled na aplicação
+
+**Progresso em Tempo Real** - PLANNED
+
+- Server-Sent Events (SSE) na página /status
+- Atualização visual documento a documento
+- Resultado final: aprovado, pendência ou análise manual
+
+**Reenvio de Documentos** - PLANNED
+
+- Reenvio individual de documento rejeitado
+- Limite de 3 tentativas por documento
+- Escalação para analista via Telegram após 3 falhas
+
+---
+
+## Milestone 5 — Melhorias Futuras
 
 **Goal:** Robustez, UX e observabilidade
 
@@ -93,20 +140,21 @@
 
 **Testes Automatizados** - PLANNED
 
-- Unit tests para `lib/avaliar.ts` e `lib/validators.ts`
+- Unit tests para `lib/avaliar.ts`, `lib/validators.ts` e validações IA
 - Integration tests para API routes
 - E2E com Playwright para o fluxo completo
+
+**Área do Candidato Expandida** - PLANNED
+
+- Página /perfil com dados pessoais
+- Status do contrato, parcelas, histórico
+- Notificações por email de mudanças de status
 
 **Observabilidade** - PLANNED
 
 - Logs estruturados nas API routes
 - Monitoramento de taxa de reprovação
-- Dashboard de conversão por etapa
-
-**UX Improvements** - PLANNED
-
-- Validação em tempo real no CardDadosPessoais (CPF, CEP com autocomplete)
-- Feedback visual no rodízio de números (skeleton durante verificacao)
+- Dashboard de conversão por etapa e por documento
 
 ---
 

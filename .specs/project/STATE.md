@@ -1,28 +1,38 @@
 # State
 
 **Last updated:** 2026-03-28
-**Session:** Inicialização do spec-driven — mapeamento brownfield completo
+**Session:** Feature spec completa — Validação de Documentos com IA
 
 ---
 
 ## Current Focus
 
-Projeto em produção. Documentação spec-driven criada a partir de análise do codebase existente.
+Feature "Validação de Documentos com IA" — spec, design e tasks aprovados. Pronto para implementação.
 
 ## Active Work
 
-Nenhum. Aguardando próxima feature ou bug a especificar.
+- Feature `validacao-documentos-ia`: spec.md, design.md e tasks.md completos (33 tasks, 6 phases)
+- Migração do formulário da Vercel para VPS (Coolify) planejada como parte da feature
 
 ## Recent Decisions
 
+- **2026-03-28:** Feature "Validação de Documentos com IA" desenhada e aprovada
+  - Abordagem: monolito estendido (sem n8n, sem worker separado)
+  - Infra: migração para VPS Hostinger com Coolify (container Docker)
+  - Storage: Cloudflare R2 (presigned URLs, path com formCode UUID)
+  - IA: Google Gemini Flash (OCR, vídeo) + AWS Rekognition (biometria)
+  - Auth: CPF + senha, JWT httpOnly, auto-login após cadastro
+  - UX: Progresso em tempo real via SSE, reenvio com limite de 3 tentativas
+  - Selfie cumpre dupla função: placa (Gemini) + biometria (Rekognition)
+  - Botão WhatsApp movido para após aprovação dos documentos
 - **2026-03-28:** Criado .specs completo via brownfield mapping do codebase existente
-  - 6 docs codebase (STACK, ARCHITECTURE, CONVENTIONS, STRUCTURE, TESTING, INTEGRATIONS)
-  - PROJECT.md e ROADMAP.md baseados em `docs/formulario-credfacil-design.md` + análise do código
-  - STATE.md inicializado
 
 ## Blockers
 
-Nenhum.
+- Conta Google Cloud (Gemini API) precisa ser criada
+- Conta AWS (Rekognition) precisa ser criada
+- Bucket Cloudflare R2 precisa ser criado
+- Domínio para o formulário na VPS precisa ser configurado
 
 ## Preferences
 
