@@ -1,7 +1,7 @@
 # Validação de Documentos com IA — Design
 
 **Spec**: `.specs/features/validacao-documentos-ia/spec.md`
-**Status**: Approved
+**Status**: ✅ Implementado — 2026-03-29
 
 ---
 

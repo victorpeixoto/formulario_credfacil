@@ -1,21 +1,29 @@
 # State
 
-**Last updated:** 2026-03-28
-**Session:** Feature spec completa — Validação de Documentos com IA
+**Last updated:** 2026-03-29
+**Session:** Implementação completa — Validação de Documentos com IA (T1-T30)
 
 ---
 
 ## Current Focus
 
-Feature "Validação de Documentos com IA" — spec, design e tasks aprovados. Pronto para implementação.
+Feature "Validação de Documentos com IA" — implementada na branch `feature/validacao-documentos-ia`. Pendente: testes manuais (T33) e merge/deploy em produção.
 
 ## Active Work
 
-- Feature `validacao-documentos-ia`: spec.md, design.md e tasks.md completos (33 tasks, 6 phases)
-- Migração do formulário da Vercel para VPS (Coolify) planejada como parte da feature
+- Branch `feature/validacao-documentos-ia`: 7 commits, build ✅ sem erros
+- Próximo passo: testes manuais end-to-end (T33) antes do merge para master
 
 ## Recent Decisions
 
+- **2026-03-29:** Implementação completa da feature em 6 fases (T1-T30)
+  - T1-T5: dependências, tipos TypeScript, route groups `(public)`/`(auth)`, `.env.local.example`
+  - T6-T10: `lib/auth.ts`, `lib/r2.ts`, `lib/ai/gemini.ts`, `lib/ai/rekognition.ts`, `lib/email.ts`
+  - T11-T16, T21: validações individuais + `lib/ai/cruzamento.ts` (Levenshtein)
+  - T17-T24: 7 API routes + `middleware.ts` (JWT httpOnly, rate limit 5 tentativas)
+  - T25-T29: páginas `/login`, `/aprovado` (redesign), `/documentos`, `/status` (SSE), `/redefinir-senha`
+  - T30: `Dockerfile` multi-stage Alpine + `next.config.ts` output standalone
+  - T31/T32: reenvio de documentos e alerta Telegram integrados no `iniciar/route.ts`
 - **2026-03-28:** Feature "Validação de Documentos com IA" desenhada e aprovada
   - Abordagem: monolito estendido (sem n8n, sem worker separado)
   - Infra: migração para VPS Hostinger com Coolify (container Docker)
@@ -29,10 +37,10 @@ Feature "Validação de Documentos com IA" — spec, design e tasks aprovados. P
 
 ## Blockers
 
-- Conta Google Cloud (Gemini API) precisa ser criada
-- Conta AWS (Rekognition) precisa ser criada
-- Bucket Cloudflare R2 precisa ser criado
-- Domínio para o formulário na VPS precisa ser configurado
+- Conta Google Cloud (Gemini API) precisa ser criada — necessária para testes reais
+- Conta AWS (Rekognition) precisa ser criada — necessária para testes reais
+- Bucket Cloudflare R2 precisa ser criado — necessário para testes de upload
+- Domínio para o formulário na VPS precisa ser configurado — necessário para deploy
 
 ## Preferences
 

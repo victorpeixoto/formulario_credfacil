@@ -1,16 +1,20 @@
 # Validação de Documentos com IA — Specification
 
+**Status**: ✅ Implementado — branch `feature/validacao-documentos-ia` | Pendente: testes manuais (T33) e deploy produção
+
+---
+
 ## Problem Statement
 
 Hoje os candidatos aprovados na triagem do formulário enviam documentos manualmente pelo WhatsApp, onde um analista verifica cada arquivo. Isso cria gargalo operacional, não escala com volume, e é vulnerável a fraudes (documentos editados, identidade falsa). A automação com IA elimina o gargalo, reduz tempo de análise de horas para segundos, e adiciona verificações de integridade impossíveis manualmente.
 
 ## Goals
 
-- [ ] Candidato envia 5 documentos e recebe resultado da análise em < 2 minutos
-- [ ] IA valida automaticamente 6 critérios (CNH, comprovante, biometria, placa, vídeo app, vídeo veículo)
-- [ ] Cruzamento automático de dados entre documentos (nome, CPF, placa, rosto)
-- [ ] Candidato tem área própria com login para acompanhar status e reenviar documentos
-- [ ] Analista é alertado automaticamente após 3 tentativas falhas de um documento
+- [x] Candidato envia 5 documentos e recebe resultado da análise em < 2 minutos
+- [x] IA valida automaticamente 6 critérios (CNH, comprovante, biometria, placa, vídeo app, vídeo veículo)
+- [x] Cruzamento automático de dados entre documentos (nome, CPF, placa, rosto)
+- [x] Candidato tem área própria com login para acompanhar status e reenviar documentos
+- [x] Analista é alertado automaticamente após 3 tentativas falhas de um documento
 
 ## Out of Scope
 
@@ -200,8 +204,8 @@ Hoje os candidatos aprovados na triagem do formulário enviam documentos manualm
 
 ## Success Criteria
 
-- [ ] Candidato completa upload + validação em < 2 minutos (excluindo tempo de gravação de vídeo)
-- [ ] 90%+ dos documentos válidos são aprovados automaticamente sem intervenção humana
-- [ ] 95%+ dos documentos fraudulentos são detectados (cortes em vídeo, rosto diferente, placa inconsistente)
-- [ ] Zero dados sensíveis expostos no path de storage (usando formCode UUID, não CPF)
-- [ ] Tempo de indisponibilidade zero durante deploy (Coolify rolling restart)
+- [ ] Candidato completa upload + validação em < 2 minutos (excluindo tempo de gravação de vídeo) — *a verificar em produção*
+- [ ] 90%+ dos documentos válidos são aprovados automaticamente sem intervenção humana — *a verificar em produção*
+- [ ] 95%+ dos documentos fraudulentos são detectados (cortes em vídeo, rosto diferente, placa inconsistente) — *a verificar em produção*
+- [x] Zero dados sensíveis expostos no path de storage (usando formCode UUID, não CPF)
+- [ ] Tempo de indisponibilidade zero durante deploy (Coolify rolling restart) — *a verificar em produção*
