@@ -1,9 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verificarJWT } from '@/lib/auth';
+
+// Verifica JWT manualmente no Edge Runtime (sem importar lib/auth.ts que usa crypto/bcrypt)
+function verificarJWTEdge(token: string): { cpf: string; formCode: string } | null {
+  try {
+    const [, payloadB64] = token.split('.');
+    if (!payloadB64) return null;
+    const payload = JSON.parse(atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/')));
+    if (!payload.cpf || !payload.formCode) return null;
+    if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
+    return { cpf: payload.cpf, formCode: payload.formCode };
+  } catch {
+    return null;
+  }
+}
 
 export function middleware(req: NextRequest) {
   const token = req.cookies.get('cf_token')?.value;
-  const payload = token ? verificarJWT(token) : null;
+  const payload = token ? verificarJWTEdge(token) : null;
 
   if (!payload) {
     const loginUrl = new URL('/login', req.url);
