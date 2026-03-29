@@ -1,6 +1,6 @@
 'use client';
 
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 import { FlagValues } from 'flags/react';
 import { track } from '@vercel/analytics';
@@ -18,10 +18,14 @@ function getCookie(name: string): string | undefined {
 
 function ConteudoAprovado() {
   const params = useSearchParams();
+  const router = useRouter();
   const id = params.get('id') ?? '';
-  const whatsappLink = decodeURIComponent(params.get('link') ?? '');
   const [isSendingCAPI, setIsSendingCAPI] = useState(false);
   const [userData, setUserData] = useState<UserData | null>(null);
+  const [senha, setSenha] = useState('');
+  const [confirmarSenha, setConfirmarSenha] = useState('');
+  const [erroSenha, setErroSenha] = useState('');
+  const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
     const sendCompleteRegistrationEvent = async () => {
@@ -67,37 +71,37 @@ function ConteudoAprovado() {
     sendCompleteRegistrationEvent();
   }, []);
 
-  const handleWhatsAppClick = () => {
-    track('whatsapp_click', { contactId: id });
-
-    if (typeof window !== 'undefined' && (window as any).fbq) {
-      (window as any).fbq('track', 'Purchase', {
-        currency: 'BRL',
-        value: 0.00,
-      });
+  const handleCriarConta = async () => {
+    setErroSenha('');
+    if (senha.length < 6) {
+      setErroSenha('A senha deve ter pelo menos 6 caracteres.');
+      return;
+    }
+    if (senha !== confirmarSenha) {
+      setErroSenha('As senhas não coincidem.');
+      return;
     }
 
-    fetch('/api/meta-capi', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        eventName: 'Purchase',
-        userData: {
-          email: userData?.email,
-          firstName: userData?.firstName,
-          lastName: userData?.lastName,
-          fbc: getCookie('_fbc'),
-          fbp: getCookie('_fbp'),
-        },
-        customData: {
-          currency: 'BRL',
-          value: 0.00,
-        },
-        eventSourceUrl: window.location.href,
-      }),
-    }).finally(() => {
-      localStorage.removeItem('cf_user_data');
-    });
+    setSalvando(true);
+    try {
+      const cpf = localStorage.getItem('cf_cpf') ?? '';
+      const res = await fetch('/api/auth/registrar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cpf, senha }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setErroSenha(data.error ?? 'Erro ao criar conta.');
+        return;
+      }
+      track('conta_criada', { contactId: id });
+      router.push('/documentos');
+    } catch {
+      setErroSenha('Erro de conexão. Tente novamente.');
+    } finally {
+      setSalvando(false);
+    }
   };
 
   return (
@@ -111,7 +115,7 @@ function ConteudoAprovado() {
         </div>
         <h1 className="text-2xl font-bold text-gray-900">Pré-cadastro concluído!</h1>
         <p className="text-gray-500 text-sm leading-relaxed">
-          Seus dados foram recebidos. Para seguir com a análise, envie os documentos pelo WhatsApp.
+          Crie uma senha para acessar a área de documentos.
         </p>
       </div>
 
@@ -120,19 +124,30 @@ function ConteudoAprovado() {
         <p className="font-mono text-gray-800 font-semibold text-sm break-all">{id}</p>
       </div>
 
-      <p className="text-xs text-gray-400 leading-relaxed">
-        Ao clicar no botão abaixo, o WhatsApp abrirá com uma mensagem já preenchida. Basta enviar e aguardar as instruções de documentação.
-      </p>
-
-      <a
-        href={whatsappLink}
-        onClick={handleWhatsAppClick}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="w-full py-4 rounded-2xl bg-green-500 hover:bg-green-600 active:scale-95 text-white font-semibold text-lg text-center transition-all duration-200 block"
-      >
-        Falar no WhatsApp
-      </a>
+      <div className="w-full flex flex-col gap-3">
+        <input
+          type="password"
+          placeholder="Criar senha (mínimo 6 caracteres)"
+          value={senha}
+          onChange={(e) => setSenha(e.target.value)}
+          className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+        />
+        <input
+          type="password"
+          placeholder="Confirmar senha"
+          value={confirmarSenha}
+          onChange={(e) => setConfirmarSenha(e.target.value)}
+          className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+        />
+        {erroSenha && <p className="text-red-500 text-sm">{erroSenha}</p>}
+        <button
+          onClick={handleCriarConta}
+          disabled={salvando}
+          className="w-full py-4 rounded-2xl bg-green-500 hover:bg-green-600 active:scale-95 text-white font-semibold text-lg transition-all duration-200 disabled:opacity-40"
+        >
+          {salvando ? 'Aguarde...' : 'Criar conta e continuar'}
+        </button>
+      </div>
     </main>
   );
 }
