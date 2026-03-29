@@ -92,8 +92,8 @@ npm install -D @types/bcryptjs @types/jsonwebtoken
 ```
 
 **Done when**:
-- [ ] Todos os pacotes instalados sem erro
-- [ ] `npm run build` compila sem erros de tipo
+- [x] Todos os pacotes instalados sem erro
+- [x] `npm run build` compila sem erros de tipo
 
 **Verify**: `npm ls @aws-sdk/client-s3 @google/generative-ai bcryptjs jsonwebtoken`
 
@@ -106,11 +106,11 @@ npm install -D @types/bcryptjs @types/jsonwebtoken
 **Depends on**: T1
 
 **Done when**:
-- [ ] Tipos TipoDocumento, StatusDocumento, StatusDocumentos definidos
-- [ ] Interfaces DocumentoInfo, ResultadoValidacao, ValidacaoIA definidas
-- [ ] Interfaces de resultado por documento (ResultadoCNH, ResultadoComprovante, etc.) definidas
-- [ ] Exportações corretas
-- [ ] `npm run build` compila
+- [x] Tipos TipoDocumento, StatusDocumento, StatusDocumentos definidos
+- [x] Interfaces DocumentoInfo, ResultadoValidacao, ValidacaoIA definidas
+- [x] Interfaces de resultado por documento (ResultadoCNH, ResultadoComprovante, etc.) definidas
+- [x] Exportações corretas
+- [x] `npm run build` compila
 
 **Verify**: `npx tsc --noEmit`
 
@@ -123,10 +123,10 @@ npm install -D @types/bcryptjs @types/jsonwebtoken
 **Depends on**: T1
 
 **Done when**:
-- [ ] Interface JWTPayload { cpf: string, formCode: string, iat: number, exp: number }
-- [ ] Interface RegistrarRequest { cpf: string, senha: string }
-- [ ] Interface LoginRequest { cpf: string, senha: string }
-- [ ] `npm run build` compila
+- [x] Interface JWTPayload { cpf: string, formCode: string, iat: number, exp: number }
+- [x] Interface RegistrarRequest { cpf: string, senha: string }
+- [x] Interface LoginRequest { cpf: string, senha: string }
+- [x] `npm run build` compila
 
 **Verify**: `npx tsc --noEmit`
 
@@ -150,10 +150,10 @@ npm install -D @types/bcryptjs @types/jsonwebtoken
 - Criar `app/(auth)/layout.tsx` (placeholder)
 
 **Done when**:
-- [ ] Todas as rotas públicas existentes funcionam nos novos paths
-- [ ] Route groups não alteram URLs (confirmado: /(public)/ não aparece na URL)
-- [ ] Placeholders criados para rotas novas
-- [ ] `npm run build` compila
+- [x] Todas as rotas públicas existentes funcionam nos novos paths
+- [x] Route groups não alteram URLs (confirmado: /(public)/ não aparece na URL)
+- [x] Placeholders criados para rotas novas
+- [x] `npm run build` compila
 
 **Verify**: `npm run build && curl http://localhost:3000/ && curl http://localhost:3000/aprovado`
 
@@ -184,8 +184,8 @@ SMTP_PASS=
 ```
 
 **Done when**:
-- [ ] .env.local.example atualizado com todas as vars
-- [ ] Comentários explicando cada grupo
+- [x] .env.local.example atualizado com todas as vars
+- [x] Comentários explicando cada grupo
 
 **Verify**: Verificar que o arquivo contém todas as variáveis listadas
 
@@ -206,11 +206,11 @@ SMTP_PASS=
 - `gerarResetToken(): { token: string, expira: Date }`
 
 **Done when**:
-- [ ] Hash e verificação de senha funcionam com bcryptjs
-- [ ] JWT gera token válido de 7 dias com payload {cpf, formCode}
-- [ ] verificarJWT retorna payload válido ou null
-- [ ] Reset token gera string aleatória com expiração de 1h
-- [ ] `npm run build` compila
+- [x] Hash e verificação de senha funcionam com bcryptjs
+- [x] JWT gera token válido de 7 dias com payload {cpf, formCode}
+- [x] verificarJWT retorna payload válido ou null
+- [x] Reset token gera string aleatória com expiração de 1h
+- [x] `npm run build` compila
 
 **Verify**: Testar manualmente via `node -e "..."` ou criar script de teste
 
@@ -233,10 +233,10 @@ SMTP_PASS=
 **Read URL**: válida por 1 hora
 
 **Done when**:
-- [ ] Presigned URL de upload gerada corretamente
-- [ ] Presigned URL de leitura gerada corretamente
-- [ ] Deletar arquivo funciona
-- [ ] `npm run build` compila
+- [x] Presigned URL de upload gerada corretamente
+- [x] Presigned URL de leitura gerada corretamente
+- [x] Deletar arquivo funciona
+- [x] `npm run build` compila
 
 **Verify**: Gerar URL e testar upload manual via `curl -X PUT <url> --data-binary @arquivo.jpg`
 
@@ -260,11 +260,11 @@ SMTP_PASS=
 - Retry 2x com backoff de 5s em caso de 429
 
 **Done when**:
-- [ ] Chamada de imagem funciona com Gemini
-- [ ] Chamada de vídeo funciona com Gemini
-- [ ] Resposta parseada como JSON
-- [ ] Retry implementado para 429
-- [ ] `npm run build` compila
+- [x] Chamada de imagem funciona com Gemini
+- [x] Chamada de vídeo funciona com Gemini
+- [x] Resposta parseada como JSON
+- [x] Retry implementado para 429
+- [x] `npm run build` compila
 
 **Verify**: Testar com imagem de teste e prompt simples
 
@@ -287,10 +287,10 @@ SMTP_PASS=
 - match = similarity >= 90
 
 **Done when**:
-- [ ] Comparação retorna similarity score numérico
-- [ ] match true quando >= 90, false quando < 90
-- [ ] Trata erro quando nenhum rosto é detectado
-- [ ] `npm run build` compila
+- [x] Comparação retorna similarity score numérico
+- [x] match true quando >= 90, false quando < 90
+- [x] Trata erro quando nenhum rosto é detectado
+- [x] `npm run build` compila
 
 **Verify**: Testar com duas fotos da mesma pessoa e duas diferentes
 
@@ -307,10 +307,10 @@ SMTP_PASS=
 - `enviarEmailRecuperacao(email: string, nome: string, resetUrl: string): Promise<boolean>`
 
 **Done when**:
-- [ ] Envia email via SMTP (nodemailer)
-- [ ] Template HTML com link de redefinição
-- [ ] Retorna true/false conforme sucesso
-- [ ] `npm run build` compila
+- [x] Envia email via SMTP (nodemailer)
+- [x] Template HTML com link de redefinição
+- [x] Retorna true/false conforme sucesso
+- [x] `npm run build` compila
 
 **Verify**: Enviar email de teste para endereço real
 
@@ -330,11 +330,11 @@ SMTP_PASS=
 - Retornar ResultadoValidacao com aprovado/motivo
 
 **Done when**:
-- [ ] Extrai nome, CPF, validade, categoria
-- [ ] Rejeita se ilegível
-- [ ] Rejeita se CNH vencida
-- [ ] Retorna ResultadoValidacao correto
-- [ ] `npm run build` compila
+- [x] Extrai nome, CPF, validade, categoria
+- [x] Rejeita se ilegível
+- [x] Rejeita se CNH vencida
+- [x] Retorna ResultadoValidacao correto
+- [x] `npm run build` compila
 
 **Verify**: Testar com imagem de CNH válida e uma vencida
 
@@ -354,10 +354,10 @@ SMTP_PASS=
 - Retornar ResultadoValidacao
 
 **Done when**:
-- [ ] Extrai nome, data, endereço, tipo
-- [ ] Rejeita se > 90 dias
-- [ ] Rejeita se ilegível
-- [ ] `npm run build` compila
+- [x] Extrai nome, data, endereço, tipo
+- [x] Rejeita se > 90 dias
+- [x] Rejeita se ilegível
+- [x] `npm run build` compila
 
 **Verify**: Testar com comprovante recente e um antigo
 
@@ -377,10 +377,10 @@ SMTP_PASS=
 - Retornar ResultadoValidacao + placa extraída
 
 **Done when**:
-- [ ] Detecta pessoa e veículo
-- [ ] Extrai placa quando visível
-- [ ] Detecta foto não autêntica
-- [ ] `npm run build` compila
+- [x] Detecta pessoa e veículo
+- [x] Extrai placa quando visível
+- [x] Detecta foto não autêntica
+- [x] `npm run build` compila
 
 **Verify**: Testar com selfie real e uma foto editada
 
@@ -400,9 +400,9 @@ SMTP_PASS=
 - Retornar ResultadoValidacao + dados extraídos
 
 **Done when**:
-- [ ] Extrai nome, placa, faturamento, tempo, corridas, app
-- [ ] Detecta cortes
-- [ ] `npm run build` compila
+- [x] Extrai nome, placa, faturamento, tempo, corridas, app
+- [x] Detecta cortes
+- [x] `npm run build` compila
 
 **Verify**: Testar com vídeo de tela de app
 
@@ -422,10 +422,10 @@ SMTP_PASS=
 - Retornar ResultadoValidacao
 
 **Done when**:
-- [ ] Detecta veículo ligado
-- [ ] Extrai placa
-- [ ] Detecta cortes
-- [ ] `npm run build` compila
+- [x] Detecta veículo ligado
+- [x] Extrai placa
+- [x] Detecta cortes
+- [x] `npm run build` compila
 
 **Verify**: Testar com vídeo de veículo
 
@@ -445,10 +445,10 @@ SMTP_PASS=
 - Se score < 80: rejeitado
 
 **Done when**:
-- [ ] Aprovação correta para mesma pessoa
-- [ ] Pendência para similaridade intermediária
-- [ ] Rejeição para pessoas diferentes
-- [ ] `npm run build` compila
+- [x] Aprovação correta para mesma pessoa
+- [x] Pendência para similaridade intermediária
+- [x] Rejeição para pessoas diferentes
+- [x] `npm run build` compila
 
 **Verify**: Testar com pares de fotos
 
@@ -470,11 +470,11 @@ SMTP_PASS=
 - Retornar { success: true }
 
 **Done when**:
-- [ ] Registra senha no documento existente
-- [ ] Rejeita CPF inexistente (400)
-- [ ] Rejeita se já tem senha (409)
-- [ ] Seta cookie JWT httpOnly
-- [ ] `npm run build` compila
+- [x] Registra senha no documento existente
+- [x] Rejeita CPF inexistente (400)
+- [x] Rejeita se já tem senha (409)
+- [x] Seta cookie JWT httpOnly
+- [x] `npm run build` compila
 
 **Verify**: `curl -X POST /api/auth/registrar -d '{"cpf":"...", "senha":"..."}' -v` (verificar Set-Cookie)
 
@@ -495,10 +495,10 @@ SMTP_PASS=
 - Retornar { success: true, formCode }
 
 **Done when**:
-- [ ] Login correto gera JWT e seta cookie
-- [ ] Senha errada retorna 401
-- [ ] 5 tentativas erradas bloqueia por 15min (429)
-- [ ] `npm run build` compila
+- [x] Login correto gera JWT e seta cookie
+- [x] Senha errada retorna 401
+- [x] 5 tentativas erradas bloqueia por 15min (429)
+- [x] `npm run build` compila
 
 **Verify**: `curl -X POST /api/auth/login -d '{"cpf":"...", "senha":"..."}' -v`
 
@@ -523,11 +523,11 @@ SMTP_PASS=
 - Hash nova senha, salvar, limpar token
 
 **Done when**:
-- [ ] Email de recuperação enviado com link correto
-- [ ] Token válido permite redefinir senha
-- [ ] Token expirado retorna 400
-- [ ] Token já usado retorna 400
-- [ ] `npm run build` compila
+- [x] Email de recuperação enviado com link correto
+- [x] Token válido permite redefinir senha
+- [x] Token expirado retorna 400
+- [x] Token já usado retorna 400
+- [x] `npm run build` compila
 
 **Verify**: Fluxo completo: recuperar → email → redefinir → login com nova senha
 
@@ -548,10 +548,10 @@ SMTP_PASS=
 - Retornar { uploadUrl, fileKey }
 
 **Done when**:
-- [ ] Gera URL válida para upload
-- [ ] Rejeita tipo/extensão inválidos (400)
-- [ ] Rejeita sem autenticação (401)
-- [ ] `npm run build` compila
+- [x] Gera URL válida para upload
+- [x] Rejeita tipo/extensão inválidos (400)
+- [x] Rejeita sem autenticação (401)
+- [x] `npm run build` compila
 
 **Verify**: `curl -H "Cookie: cf_token=..." "/api/upload/presigned-url?tipo=cnh&ext=jpg"`
 
@@ -575,12 +575,12 @@ SMTP_PASS=
 - biometriaConfere: score >= 90
 
 **Done when**:
-- [ ] Nomes similares (>= 85%) são aprovados
-- [ ] Nomes muito diferentes são rejeitados
-- [ ] CPFs iguais aprovam, diferentes rejeitam
-- [ ] Placas 2/3 iguais aprovam
-- [ ] Biometria usa threshold correto
-- [ ] `npm run build` compila
+- [x] Nomes similares (>= 85%) são aprovados
+- [x] Nomes muito diferentes são rejeitados
+- [x] CPFs iguais aprovam, diferentes rejeitam
+- [x] Placas 2/3 iguais aprovam
+- [x] Biometria usa threshold correto
+- [x] `npm run build` compila
 
 **Verify**: Testar com dados mock (nomes com/sem acento, placas iguais/diferentes)
 
@@ -607,12 +607,12 @@ SMTP_PASS=
 **Importante**: O processamento continua em background após o response. Usar pattern de "fire and forget" com error handling.
 
 **Done when**:
-- [ ] Salva URLs no MongoDB corretamente
-- [ ] Todas as 6 validações são disparadas em paralelo
-- [ ] Resultados individuais atualizados no MongoDB
-- [ ] Cruzamento executado após validações
-- [ ] statusDocumentos atualizado corretamente
-- [ ] `npm run build` compila
+- [x] Salva URLs no MongoDB corretamente
+- [x] Todas as 6 validações são disparadas em paralelo
+- [x] Resultados individuais atualizados no MongoDB
+- [x] Cruzamento executado após validações
+- [x] statusDocumentos atualizado corretamente
+- [x] `npm run build` compila
 
 **Verify**: POST com URLs de teste, verificar MongoDB após processamento
 
@@ -642,11 +642,11 @@ data: {"statusFinal":"APROVADO","validacaoIA":{...}}
 ```
 
 **Done when**:
-- [ ] SSE stream abre corretamente
-- [ ] Eventos enviados conforme documentos mudam de status
-- [ ] Evento "concluido" enviado ao final
-- [ ] Stream fecha após conclusão
-- [ ] `npm run build` compila
+- [x] SSE stream abre corretamente
+- [x] Eventos enviados conforme documentos mudam de status
+- [x] Evento "concluido" enviado ao final
+- [x] Stream fecha após conclusão
+- [x] `npm run build` compila
 
 **Verify**: `curl -N -H "Cookie: cf_token=..." "/api/validacao/status?formCode=..."`
 
@@ -667,11 +667,11 @@ data: {"statusFinal":"APROVADO","validacaoIA":{...}}
 - Se inválido: redirect /login
 
 **Done when**:
-- [ ] Rotas /(auth)/* redirecionam para /login sem cookie
-- [ ] Rotas /(auth)/* funcionam com cookie válido
-- [ ] Headers x-user-cpf e x-user-formcode presentes
-- [ ] Rotas /(public)/* não são afetadas
-- [ ] `npm run build` compila
+- [x] Rotas /(auth)/* redirecionam para /login sem cookie
+- [x] Rotas /(auth)/* funcionam com cookie válido
+- [x] Headers x-user-cpf e x-user-formcode presentes
+- [x] Rotas /(public)/* não são afetadas
+- [x] `npm run build` compila
 
 **Verify**: Acessar /documentos sem cookie → redirect. Com cookie → acessa.
 
@@ -693,11 +693,11 @@ data: {"statusFinal":"APROVADO","validacaoIA":{...}}
 - Mensagens de erro (senha incorreta, conta bloqueada)
 
 **Done when**:
-- [ ] Login funcional com redirect para /documentos
-- [ ] Exibe erros de validação
-- [ ] Link para recuperação funciona
-- [ ] Visual consistente com o formulário
-- [ ] `npm run build` compila
+- [x] Login funcional com redirect para /documentos
+- [x] Exibe erros de validação
+- [x] Link para recuperação funciona
+- [x] Visual consistente com o formulário
+- [x] `npm run build` compila
 
 **Verify**: Login com credenciais válidas → redirect /documentos
 
@@ -718,11 +718,11 @@ data: {"statusFinal":"APROVADO","validacaoIA":{...}}
 - POST /api/auth/registrar → auto-login → redirect /documentos
 
 **Done when**:
-- [ ] Campos de senha exibidos
-- [ ] Validação client-side (mín 6 chars, senhas coincidem)
-- [ ] POST para registrar funciona
-- [ ] Auto-login com redirect para /documentos
-- [ ] `npm run build` compila
+- [x] Campos de senha exibidos
+- [x] Validação client-side (mín 6 chars, senhas coincidem)
+- [x] POST para registrar funciona
+- [x] Auto-login com redirect para /documentos
+- [x] `npm run build` compila
 
 **Verify**: Completar formulário → tela aprovado → cadastrar senha → /documentos
 
@@ -745,14 +745,14 @@ data: {"statusFinal":"APROVADO","validacaoIA":{...}}
 - Se statusDocumentos == "APROVADO": redirect para /status
 
 **Done when**:
-- [ ] 5 slots de upload renderizam
-- [ ] Upload via presigned URL funciona para cada tipo
-- [ ] Preview de imagem após upload
-- [ ] Validação de formato e tamanho
-- [ ] Botão habilitado apenas com 5/5
-- [ ] POST /api/validacao/iniciar ao clicar
-- [ ] Redirect para /status após iniciar
-- [ ] `npm run build` compila
+- [x] 5 slots de upload renderizam
+- [x] Upload via presigned URL funciona para cada tipo
+- [x] Preview de imagem após upload
+- [x] Validação de formato e tamanho
+- [x] Botão habilitado apenas com 5/5
+- [x] POST /api/validacao/iniciar ao clicar
+- [x] Redirect para /status após iniciar
+- [x] `npm run build` compila
 
 **Verify**: Upload de 5 arquivos de teste → botão habilita → clique → redirect /status
 
@@ -778,12 +778,12 @@ data: {"statusFinal":"APROVADO","validacaoIA":{...}}
 - Reconexão automática se SSE cair
 
 **Done when**:
-- [ ] SSE conecta e recebe eventos
-- [ ] UI atualiza em tempo real
-- [ ] Resultado final exibido corretamente
-- [ ] Botão WhatsApp funciona (rodízio de números)
-- [ ] Reconexão automática
-- [ ] `npm run build` compila
+- [x] SSE conecta e recebe eventos
+- [x] UI atualiza em tempo real
+- [x] Resultado final exibido corretamente
+- [x] Botão WhatsApp funciona (rodízio de números)
+- [x] Reconexão automática
+- [x] `npm run build` compila
 
 **Verify**: Iniciar validação → abrir /status → ver progresso → resultado final
 
@@ -804,10 +804,10 @@ data: {"statusFinal":"APROVADO","validacaoIA":{...}}
 - Sucesso: redirect /login com mensagem "Senha redefinida com sucesso"
 
 **Done when**:
-- [ ] Formulário exibido com token válido
-- [ ] Redefinição funciona
-- [ ] Token inválido/expirado mostra erro
-- [ ] `npm run build` compila
+- [x] Formulário exibido com token válido
+- [x] Redefinição funciona
+- [x] Token inválido/expirado mostra erro
+- [x] `npm run build` compila
 
 **Verify**: Usar token de teste → redefinir → login com nova senha
 
@@ -840,11 +840,11 @@ CMD ["node", "server.js"]
 **next.config.ts**: adicionar `output: 'standalone'`
 
 **Done when**:
-- [ ] Docker build completa sem erros
-- [ ] Container inicia e serve na porta 3000
-- [ ] Todas as rotas funcionam dentro do container
-- [ ] Conexão com MongoDB via rede interna Docker funciona
-- [ ] `docker build -t formulario-credfacil .` completa
+- [x] Docker build completa sem erros
+- [x] Container inicia e serve na porta 3000
+- [x] Todas as rotas funcionam dentro do container
+- [x] Conexão com MongoDB via rede interna Docker funciona
+- [x] `docker build -t formulario-credfacil .` completa
 
 **Verify**: `docker run -p 3000:3000 --env-file .env.local formulario-credfacil`
 
@@ -864,12 +864,12 @@ CMD ["node", "server.js"]
 - Após validação: reexecutar cruzamento com resultados atualizados
 
 **Done when**:
-- [ ] Apenas documentos rejeitados são mostrados para reenvio
-- [ ] Novo upload gera novo path no R2
-- [ ] Validação individual funciona (sem reprocessar os já aprovados)
-- [ ] Cruzamento reexecutado
-- [ ] Contador de tentativas incrementa
-- [ ] `npm run build` compila
+- [x] Apenas documentos rejeitados são mostrados para reenvio
+- [x] Novo upload gera novo path no R2
+- [x] Validação individual funciona (sem reprocessar os já aprovados)
+- [x] Cruzamento reexecutado
+- [x] Contador de tentativas incrementa
+- [x] `npm run build` compila
 
 **Verify**: Rejeitar documento → reenviar → verificar tentativas incrementaram
 
@@ -888,11 +888,11 @@ CMD ["node", "server.js"]
 - Enviar alerta Telegram com formCode, CPF, documento(s) problemático(s)
 
 **Done when**:
-- [ ] Status muda para ANALISE_MANUAL após 3 tentativas
-- [ ] Alerta Telegram enviado com dados corretos
-- [ ] analistaAlertado = true no MongoDB
-- [ ] Candidato vê mensagem "Em análise pela equipe"
-- [ ] `npm run build` compila
+- [x] Status muda para ANALISE_MANUAL após 3 tentativas
+- [x] Alerta Telegram enviado com dados corretos
+- [x] analistaAlertado = true no MongoDB
+- [x] Candidato vê mensagem "Em análise pela equipe"
+- [x] `npm run build` compila
 
 **Verify**: Simular 3 rejeições → verificar Telegram recebeu alerta
 
@@ -914,9 +914,9 @@ CMD ["node", "server.js"]
 7. Validações client-side: arquivo muito grande, formato errado
 
 **Done when**:
-- [ ] Todos os 7 cenários passam
-- [ ] Nenhum erro no console do servidor
-- [ ] Dados corretos no MongoDB após cada cenário
+- [x] Todos os 7 cenários passam
+- [x] Nenhum erro no console do servidor
+- [x] Dados corretos no MongoDB após cada cenário
 
 **Verify**: Executar cada cenário manualmente, documentar resultado
 
