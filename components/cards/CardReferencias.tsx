@@ -24,6 +24,7 @@ function telRepetido(refs: Referencia[], tel: string): boolean {
 export default function CardReferencias({ valor, onChange, onAvancar, onVoltar }: Props) {
   const [novo, setNovo] = useState<Referencia>(vazio);
   const [erro, setErro] = useState('');
+  const [confirmou, setConfirmou] = useState(false);
 
   function adicionar() {
     const { nome, telefone, parentesco } = novo;
@@ -39,9 +40,14 @@ export default function CardReferencias({ valor, onChange, onAvancar, onVoltar }
       setErro('Esse telefone já foi adicionado.');
       return;
     }
+    if (!confirmou) {
+      setErro('Confirme que este contato tem ciência antes de adicionar.');
+      return;
+    }
     onChange([...valor, novo]);
     setNovo(vazio);
     setErro('');
+    setConfirmou(false);
   }
 
   function remover(i: number) {
@@ -49,6 +55,7 @@ export default function CardReferencias({ valor, onChange, onAvancar, onVoltar }
   }
 
   const faltam = TOTAL - valor.length;
+  const formularioPreenchido = novo.nome.trim() && novo.telefone.trim() && novo.parentesco.trim();
 
   return (
     <div className="flex flex-col gap-5">
@@ -57,6 +64,14 @@ export default function CardReferencias({ valor, onChange, onAvancar, onVoltar }
         <p className="text-gray-500 mt-1 text-sm">
           Precisamos de {TOTAL} contatos de parentes ou amigos.
           {faltam > 0 && <span className="text-green-600 font-medium"> Faltam {faltam}.</span>}
+        </p>
+      </div>
+
+      {/* Aviso de verificação */}
+      <div className="flex gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+        <span className="text-amber-500 text-base mt-0.5">⚠️</span>
+        <p className="text-amber-800 text-xs leading-relaxed">
+          Esses contatos <strong>serão chamados</strong> pela nossa equipe para confirmação. A inserção de dados falsos resulta na <strong>reprovação automática</strong> da solicitação.
         </p>
       </div>
 
@@ -97,6 +112,38 @@ export default function CardReferencias({ valor, onChange, onAvancar, onVoltar }
             onChange={(e) => setNovo({ ...novo, parentesco: e.target.value })}
             className="w-full bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-green-400"
           />
+
+          {/* Checkbox de confirmação — aparece só quando o formulário está preenchido */}
+          {formularioPreenchido && (
+            <label className="flex items-start gap-3 cursor-pointer select-none mt-1">
+              <div className="relative shrink-0 mt-0.5">
+                <input
+                  type="checkbox"
+                  checked={confirmou}
+                  onChange={(e) => {
+                    setConfirmou(e.target.checked);
+                    if (erro) setErro('');
+                  }}
+                  className="sr-only"
+                />
+                <div
+                  className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                    confirmou ? 'bg-green-500 border-green-500' : 'bg-white border-gray-300'
+                  }`}
+                >
+                  {confirmou && (
+                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 12 12" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2 6l3 3 5-5" />
+                    </svg>
+                  )}
+                </div>
+              </div>
+              <span className="text-xs text-gray-600 leading-relaxed">
+                Este contato <strong>tem ciência</strong> de que pode ser chamado e autorizou o uso do número.
+              </span>
+            </label>
+          )}
+
           {erro && <p className="text-red-500 text-xs">{erro}</p>}
           <button
             onClick={adicionar}
