@@ -173,6 +173,7 @@ export default function Home() {
         }),
       });
       localStorage.removeItem(DRAFT_KEY);
+      localStorage.setItem('cf_cpf', estado.cpf.replace(/\D/g, ''));
       localStorage.setItem('cf_user_data', JSON.stringify({
         email: estado.email,
         firstName: estado.nomeCompleto.split(' ')[0],
@@ -204,10 +205,18 @@ export default function Home() {
       }
 
                 if (data.exists) {
-        if (data.whatsappLink) {
-          router.push(`/suporte-whatsapp?link=${encodeURIComponent(data.whatsappLink)}`);
+        if (data.temSenha && data.formCode) {
+          router.push(`/login?code=${data.formCode}`);
+        } else if (data.formCode) {
+          localStorage.setItem('cf_cpf', cpf.replace(/\D/g, ''));
+          router.push(`/aprovado?id=${data.formCode}`);
         } else {
-          setCpfExistenteErro('Não foi possível gerar o link de suporte. Tente novamente.');
+          // fallback: candidato antigo sem formCode
+          if (data.whatsappLink) {
+            router.push(`/suporte-whatsapp?link=${encodeURIComponent(data.whatsappLink)}`);
+          } else {
+            setCpfExistenteErro('Não foi possível acessar sua conta. Entre em contato com o suporte.');
+          }
         }
       } else {
         // CPF não encontrado, direcionar para novo formulário

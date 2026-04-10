@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
   }
 
   const client = await clientPromise;
-  const db = client.db();
+  const db = client.db('credfacil');
   const candidato = await db.collection('conversations').findOne({ cpf });
 
   if (!candidato || !candidato.senhaHash) {
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
     .collection('conversations')
     .updateOne({ cpf }, { $unset: { loginBloqueadoAte: '', loginTentativas: '' } });
 
-  const token = gerarJWT(cpf, candidato.formCode);
+  const token = gerarJWT(cpf, candidato.formCode ?? candidato.contactId);
 
   const response = NextResponse.json({ success: true, formCode: candidato.formCode });
   response.cookies.set('cf_token', token, {

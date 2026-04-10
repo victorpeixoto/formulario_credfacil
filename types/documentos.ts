@@ -17,9 +17,11 @@ export interface ResultadoValidacao {
 }
 
 export interface ValidacaoIA {
+  nomeCadastroConfere: boolean | null;
   nomeConfere: boolean | null;
   placaConfere: boolean | null;
   cpfConfere: boolean | null;
+  enderecoConfere: boolean | null;
   biometriaConfere: boolean | null;
   biometriaScore: number | null;
 }
@@ -44,6 +46,12 @@ export interface ResultadoComprovante {
   nome: string;
   dataEmissao: string;
   endereco: string;
+  logradouro: string;
+  numero: string;
+  bairro: string;
+  cidade: string;
+  estadoUF: string;
+  cep: string;
   tipo: string;
   legivel: boolean;
 }

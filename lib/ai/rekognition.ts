@@ -1,4 +1,5 @@
 import { RekognitionClient, CompareFacesCommand } from '@aws-sdk/client-rekognition';
+import { pdf } from 'pdf-to-img';
 
 const client = new RekognitionClient({
   region: process.env.AWS_REGION || 'us-east-1',
@@ -8,10 +9,31 @@ const client = new RekognitionClient({
   },
 });
 
+async function pdfParaPng(buffer: Buffer): Promise<Uint8Array> {
+  const pages = await pdf(buffer, { scale: 2 });
+  for await (const page of pages) {
+    return new Uint8Array(page);
+  }
+  throw new Error('PDF não contém páginas');
+}
+
 async function downloadAsBytes(url: string): Promise<Uint8Array> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Falha ao baixar imagem: ${res.status}`);
-  const buffer = await res.arrayBuffer();
+  const buffer = Buffer.from(await res.arrayBuffer());
+  const contentType = res.headers.get('content-type')?.split(';')[0]?.trim();
+
+  if (contentType === 'application/pdf') {
+    return pdfParaPng(buffer);
+  }
+
+  const formatosAceitos = ['image/jpeg', 'image/png'];
+  if (contentType && !formatosAceitos.includes(contentType)) {
+    throw new Error(
+      `Formato não suportado pelo Rekognition: ${contentType}. Aceitos: JPEG, PNG ou PDF.`
+    );
+  }
+
   return new Uint8Array(buffer);
 }
 

@@ -4,15 +4,22 @@ import type { ResultadoComprovante } from '@/types/documentos';
 const PROMPT = `Analise este comprovante de residência brasileiro e extraia:
 1. Nome do titular
 2. Data de emissão ou referência (formato YYYY-MM-DD)
-3. Endereço completo
-4. Tipo do comprovante (conta de luz, água, telefone, etc.)
-5. O documento está legível e sem cortes?
+3. Endereço completo (texto livre)
+4. Endereço estruturado: logradouro (rua/av), número, bairro, cidade, estado (sigla UF), CEP
+5. Tipo do comprovante (conta de luz, água, telefone, etc.)
+6. O documento está legível e sem cortes?
 
 Responda APENAS em JSON:
 {
   "nome": "...",
   "dataEmissao": "YYYY-MM-DD",
-  "endereco": "...",
+  "endereco": "Rua X, 123, Bairro Y, Cidade - UF, 00000-000",
+  "logradouro": "Rua X",
+  "numero": "123",
+  "bairro": "Bairro Y",
+  "cidade": "Cidade",
+  "estadoUF": "UF",
+  "cep": "00000000",
   "tipo": "...",
   "legivel": true
 }`;

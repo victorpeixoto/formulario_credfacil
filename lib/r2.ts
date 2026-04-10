@@ -14,18 +14,31 @@ const client = new S3Client({
 
 const BUCKET = process.env.R2_BUCKET_NAME!;
 
+const MIME_MAP: Record<string, string> = {
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  pdf: 'application/pdf',
+  mp4: 'video/mp4',
+  mov: 'video/quicktime',
+};
+
 export async function gerarPresignedUpload(
   formCode: string,
   tipo: TipoDocumento,
   ext: string
-): Promise<{ uploadUrl: string; fileKey: string }> {
+): Promise<{ uploadUrl: string; fileKey: string; contentType: string }> {
   const timestamp = Date.now();
   const fileKey = `documentos/${formCode}/${tipo}_${timestamp}.${ext}`;
+  const contentType = MIME_MAP[ext] ?? 'application/octet-stream';
 
-  const command = new PutObjectCommand({ Bucket: BUCKET, Key: fileKey });
-  const uploadUrl = await getSignedUrl(client, command, { expiresIn: 600 }); // 10 min
+  const command = new PutObjectCommand({ Bucket: BUCKET, Key: fileKey, ContentType: contentType });
+  const uploadUrl = await getSignedUrl(client, command, {
+    expiresIn: 600,
+    unhoistableHeaders: new Set(['content-type']),
+  });
 
-  return { uploadUrl, fileKey };
+  return { uploadUrl, fileKey, contentType };
 }
 
 export async function gerarPresignedRead(fileKey: string): Promise<string> {

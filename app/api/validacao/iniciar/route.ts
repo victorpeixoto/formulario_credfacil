@@ -9,7 +9,7 @@ import { validarSelfiePlaca } from '@/lib/ai/validacoes/selfie-placa';
 import { validarVideoApp } from '@/lib/ai/validacoes/video-app';
 import { validarVideoVeiculo } from '@/lib/ai/validacoes/video-veiculo';
 import { validarBiometria } from '@/lib/ai/validacoes/biometria';
-import { cruzarDados } from '@/lib/ai/cruzamento';
+import { cruzarDados, calcularSimilaridade, type DadosCadastro } from '@/lib/ai/cruzamento';
 import { sendTelegramAlert } from '@/lib/telegram-alert';
 import type { DocumentosMap, TipoDocumento } from '@/types/documentos';
 
@@ -27,7 +27,7 @@ async function executarPipeline(
   tiposReenvio: TipoDocumento[]
 ) {
   const client = await clientPromise;
-  const db = client.db();
+  const db = client.db('credfacil');
 
   // Gerar URLs de leitura para cada documento
   const urls: Record<string, string> = {};
@@ -56,63 +56,128 @@ async function executarPipeline(
   const candidato = await db.collection('conversations').findOne({ formCode });
   const docAtual = (candidato?.documentos ?? {}) as DocumentosMap;
 
-  // Executar validações em paralelo
-  const validacoes: Record<string, Promise<{ aprovado: boolean; motivo: string | null; dadosExtraidos: unknown }>> = {};
+  // Dados do cadastro para cruzamento em tempo real
+  const cadastro: DadosCadastro = {
+    nomeCompleto: candidato?.nomeCompleto ?? '',
+    cpf,
+    logradouro: candidato?.logradouro ?? '',
+    numero: candidato?.numero ?? '',
+    bairro: candidato?.bairro ?? '',
+    cidade: candidato?.cidade ?? '',
+    estadoUF: candidato?.estadoUF ?? '',
+    cep: candidato?.cep ?? '',
+  };
+
+  // Executar validações sequencialmente para evitar rate limit do Gemini
+  const DELAY_ENTRE_VALIDACOES_MS = 2000;
+  const tarefas: Array<[string, () => Promise<{ aprovado: boolean; motivo: string | null; dadosExtraidos: unknown }>]> = [];
 
   for (const tipo of tiposParaValidar) {
     const url = urls[tipo];
     switch (tipo) {
-      case 'cnh':
-        validacoes.cnh = validarCNH(url);
-        break;
-      case 'comprovante':
-        validacoes.comprovante = validarComprovante(url);
-        break;
-      case 'selfie':
-        validacoes.selfie = validarSelfiePlaca(url);
-        break;
-      case 'videoApp':
-        validacoes.videoApp = validarVideoApp(url);
-        break;
-      case 'videoVeiculo':
-        validacoes.videoVeiculo = validarVideoVeiculo(url);
-        break;
+      case 'cnh': tarefas.push(['cnh', () => validarCNH(url)]); break;
+      case 'comprovante': tarefas.push(['comprovante', () => validarComprovante(url)]); break;
+      case 'selfie': tarefas.push(['selfie', () => validarSelfiePlaca(url)]); break;
+      case 'videoApp': tarefas.push(['videoApp', () => validarVideoApp(url)]); break;
+      case 'videoVeiculo': tarefas.push(['videoVeiculo', () => validarVideoVeiculo(url)]); break;
     }
   }
 
-  // Biometria requer CNH + selfie
+  // Biometria requer CNH + selfie (AWS Rekognition — não afeta quota Gemini)
   const cnhUrl = urls.cnh ?? (docAtual.cnh?.url ? await gerarPresignedRead(docAtual.cnh.url) : null);
   const selfieUrl = urls.selfie ?? (docAtual.selfie?.url ? await gerarPresignedRead(docAtual.selfie.url) : null);
   if (cnhUrl && selfieUrl) {
-    validacoes.biometria = validarBiometria(cnhUrl, selfieUrl);
+    tarefas.push(['biometria', () => validarBiometria(cnhUrl, selfieUrl)]);
   }
 
-  const entries = Object.entries(validacoes);
-  const resultados = await Promise.allSettled(entries.map(([, p]) => p));
-
+  // Acumula resultados para cruzamento final
   const resultadosMap: Record<string, { dadosExtraidos: unknown }> = {};
 
-  for (let i = 0; i < entries.length; i++) {
-    const [tipo] = entries[i];
-    const resultado = resultados[i];
+  for (let i = 0; i < tarefas.length; i++) {
+    const [tipo, fn] = tarefas[i];
+    if (i > 0) await new Promise((r) => setTimeout(r, DELAY_ENTRE_VALIDACOES_MS));
+    console.log(`[validacao] Iniciando: ${tipo}`);
+    const inicio = Date.now();
+    const resultado = await fn().then(
+      (v) => ({ status: 'fulfilled' as const, value: v }),
+      (e) => ({ status: 'rejected' as const, reason: e })
+    );
+    const duracaoMs = Date.now() - inicio;
 
     if (resultado.status === 'fulfilled') {
-      const r = resultado.value;
-      resultadosMap[tipo] = { dadosExtraidos: r.dadosExtraidos };
+      let { aprovado, motivo, dadosExtraidos } = resultado.value;
+      console.log(
+        `[validacao] ${tipo}: ${aprovado ? 'APROVADO' : 'REJEITADO'} (${duracaoMs}ms)` +
+        (motivo ? ` | motivo: ${motivo}` : '')
+      );
+      console.log(`[validacao] ${tipo} dadosExtraidos:`, JSON.stringify(dadosExtraidos, null, 2));
+
+      resultadosMap[tipo] = { dadosExtraidos };
+
+      // Cruzamento em tempo real com dados do cadastro
+      if (aprovado && tipo === 'cnh') {
+        const dados = dadosExtraidos as Record<string, unknown>;
+        const cpfCNH = String(dados.cpf ?? '').replace(/\D/g, '');
+        const cpfCad = cadastro.cpf.replace(/\D/g, '');
+        if (cpfCNH && cpfCNH !== cpfCad) {
+          aprovado = false;
+          motivo = 'CPF da CNH não confere com o cadastro';
+          console.log(`[cruzamento] CNH rejeitada: CPF cadastro="${cpfCad}" vs CNH="${cpfCNH}"`);
+        } else if (dados.nome && calcularSimilaridade(String(dados.nome), cadastro.nomeCompleto) < 85) {
+          const sim = calcularSimilaridade(String(dados.nome), cadastro.nomeCompleto);
+          aprovado = false;
+          motivo = 'Nome da CNH não confere com o cadastro';
+          console.log(`[cruzamento] CNH rejeitada: nome cadastro="${cadastro.nomeCompleto}" vs CNH="${dados.nome}" → ${sim}%`);
+        }
+      }
+
+      if (aprovado && tipo === 'comprovante') {
+        const dados = dadosExtraidos as Record<string, unknown>;
+        const checks: boolean[] = [];
+        if (dados.logradouro) checks.push(calcularSimilaridade(String(dados.logradouro), cadastro.logradouro) >= 80);
+        if (dados.numero) checks.push(String(dados.numero).trim() === cadastro.numero.trim());
+        if (dados.bairro && cadastro.bairro) checks.push(calcularSimilaridade(String(dados.bairro), cadastro.bairro) >= 80);
+        if (dados.cidade) checks.push(calcularSimilaridade(String(dados.cidade), cadastro.cidade) >= 85);
+        if (dados.estadoUF) checks.push(String(dados.estadoUF).toUpperCase() === cadastro.estadoUF.toUpperCase());
+        if (dados.cep && cadastro.cep) checks.push(String(dados.cep).replace(/\D/g, '') === cadastro.cep.replace(/\D/g, ''));
+
+        const acertos = checks.filter(Boolean).length;
+        if (checks.length > 0 && acertos < Math.ceil(checks.length * 0.7)) {
+          aprovado = false;
+          motivo = 'Endereço do comprovante não confere com o cadastro';
+          console.log(`[cruzamento] Comprovante rejeitado: ${acertos}/${checks.length} campos conferem`);
+          console.log(`[cruzamento] comprovante: log="${dados.logradouro}" n="${dados.numero}" bairro="${dados.bairro}" cidade="${dados.cidade}" uf="${dados.estadoUF}" cep="${dados.cep}"`);
+          console.log(`[cruzamento] cadastro:    log="${cadastro.logradouro}" n="${cadastro.numero}" bairro="${cadastro.bairro}" cidade="${cadastro.cidade}" uf="${cadastro.estadoUF}" cep="${cadastro.cep}"`);
+        }
+      }
+
+      if (aprovado && tipo === 'biometria') {
+        const dados = dadosExtraidos as Record<string, unknown>;
+        if (typeof dados.similarity === 'number' && dados.similarity < 90) {
+          aprovado = false;
+          motivo = `Biometria não confirmada (similaridade: ${dados.similarity.toFixed(1)}%)`;
+          console.log(`[cruzamento] Biometria rejeitada: ${dados.similarity.toFixed(1)}%`);
+        }
+      }
 
       if (tipo !== 'biometria') {
         const tipoDoc = tipo as TipoDocumento;
         const tentativasAnterior = (docAtual as unknown as Record<string, { tentativas?: number }>)[tipoDoc]?.tentativas ?? 0;
         await updateStatus(tipoDoc, {
           url: fileKeys[tipoDoc] ?? docAtual[tipoDoc as keyof DocumentosMap]?.url,
-          status: r.aprovado ? 'aprovado' : 'rejeitado',
+          status: aprovado ? 'aprovado' : 'rejeitado',
           tentativas: tentativasAnterior + 1,
-          resultado: { aprovado: r.aprovado, motivo: r.motivo, dadosExtraidos: r.dadosExtraidos },
+          resultado: { aprovado, motivo, dadosExtraidos },
           atualizadoEm: new Date().toISOString(),
         });
       }
     } else {
-      console.error(`[validacao] Erro em ${tipo}:`, resultado.reason);
+      const err = resultado.reason;
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[validacao] ${tipo}: ERRO (${duracaoMs}ms) | ${msg}`);
+      if (err instanceof Error && err.stack) {
+        console.error(`[validacao] ${tipo} stack:`, err.stack);
+      }
       if (tipo !== 'biometria') {
         const tipoDoc = tipo as TipoDocumento;
         await updateStatus(tipoDoc, {
@@ -124,23 +189,43 @@ async function executarPipeline(
     }
   }
 
-  // Cruzamento de dados
+  // Cruzamento final (placa entre fontes + gerar validacaoIA completa)
   const candidatoAtualizado = await db.collection('conversations').findOne({ formCode });
   const docsFinal = candidatoAtualizado?.documentos ?? {};
 
   const resultadosParaCruzamento = {
     cnh: docsFinal.cnh?.resultado ? { dadosExtraidos: docsFinal.cnh.resultado.dadosExtraidos } : undefined,
+    comprovante: docsFinal.comprovante?.resultado ? { dadosExtraidos: docsFinal.comprovante.resultado.dadosExtraidos } : undefined,
     selfie: docsFinal.selfie?.resultado ? { dadosExtraidos: docsFinal.selfie.resultado.dadosExtraidos } : undefined,
     videoApp: docsFinal.videoApp?.resultado ? { dadosExtraidos: docsFinal.videoApp.resultado.dadosExtraidos } : undefined,
     videoVeiculo: docsFinal.videoVeiculo?.resultado ? { dadosExtraidos: docsFinal.videoVeiculo.resultado.dadosExtraidos } : undefined,
     biometria: resultadosMap.biometria ? { dadosExtraidos: resultadosMap.biometria.dadosExtraidos } : undefined,
   };
 
-  const validacaoIA = cruzarDados(resultadosParaCruzamento as Parameters<typeof cruzarDados>[0], cpf);
+  const validacaoIA = cruzarDados(resultadosParaCruzamento as Parameters<typeof cruzarDados>[0], cadastro);
+
+  // Rejeitar placa divergente (depende de múltiplas fontes, só pode ser feito no final)
+  if (validacaoIA.placaConfere === false) {
+    console.log(`[cruzamento] Rejeitando selfie: placa divergente entre fontes`);
+    const docSelfie = docsFinal.selfie;
+    await updateStatus('selfie', {
+      url: docSelfie?.url ?? fileKeys.selfie,
+      status: 'rejeitado',
+      tentativas: docSelfie?.tentativas ?? 0,
+      resultado: {
+        aprovado: false,
+        motivo: 'Placa divergente entre selfie, vídeo do app e vídeo do veículo',
+        dadosExtraidos: docSelfie?.resultado?.dadosExtraidos ?? {},
+      },
+      atualizadoEm: new Date().toISOString(),
+    });
+  }
 
   // Determinar status final
+  const candidatoFinal = await db.collection('conversations').findOne({ formCode });
+
   const statusDocs = ['cnh', 'comprovante', 'selfie', 'videoApp', 'videoVeiculo'] as TipoDocumento[];
-  const todosDocs = (candidatoAtualizado?.documentos ?? {}) as DocumentosMap;
+  const todosDocs = (candidatoFinal?.documentos ?? {}) as DocumentosMap;
 
   const algumRejeitado = statusDocs.some(
     (t) => todosDocs[t]?.status === 'rejeitado'
@@ -153,7 +238,6 @@ async function executarPipeline(
   if (todosAprovados && !algumRejeitado) {
     statusDocumentos = 'APROVADO';
   } else if (algumRejeitado) {
-    // Verificar se algum doc tem 3+ tentativas rejeitadas
     const precisaAnalise = statusDocs.some(
       (t) => todosDocs[t]?.status === 'rejeitado' && (todosDocs[t]?.tentativas ?? 0) >= 3
     );
@@ -199,7 +283,7 @@ export async function POST(req: NextRequest) {
   }
 
   const client = await clientPromise;
-  const db = client.db();
+  const db = client.db('credfacil');
 
   await db.collection('conversations').updateOne(
     { formCode: payload.formCode },

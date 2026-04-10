@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
       };
 
       const client = await clientPromise;
-      const db = client.db();
+      const db = client.db('credfacil');
 
       const inicio = Date.now();
       let estadoAnterior: Record<string, string> = {};
@@ -54,6 +54,12 @@ export async function GET(req: NextRequest) {
               resultado: doc.resultado ?? null,
             });
           }
+        }
+
+        // Ainda não iniciou processamento — aguardar
+        if (statusDocumentos === 'AGUARDANDO_DOCUMENTOS') {
+          await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+          continue;
         }
 
         // Status final — encerrar stream

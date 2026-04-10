@@ -1,4 +1,4 @@
-import type { ValidacaoIA, ResultadoCNH, ResultadoSelfie, ResultadoVideoApp, ResultadoVideoVeiculo, ResultadoBiometria } from '@/types/documentos';
+import type { ValidacaoIA, ResultadoCNH, ResultadoComprovante, ResultadoSelfie, ResultadoVideoApp, ResultadoVideoVeiculo, ResultadoBiometria } from '@/types/documentos';
 
 export function calcularSimilaridade(str1: string, str2: string): number {
   const s1 = str1.toLowerCase().trim();
@@ -27,33 +27,98 @@ export function calcularSimilaridade(str1: string, str2: string): number {
   return Math.round(((maxLen - distancia) / maxLen) * 100);
 }
 
+function normalizarEndereco(str: string): string {
+  return str
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\./g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export interface DadosCadastro {
+  nomeCompleto: string;
+  cpf: string;
+  logradouro: string;
+  numero: string;
+  bairro: string;
+  cidade: string;
+  estadoUF: string;
+  cep: string;
+}
+
 interface ResultadosTodos {
   cnh?: { dadosExtraidos: ResultadoCNH };
+  comprovante?: { dadosExtraidos: ResultadoComprovante };
   selfie?: { dadosExtraidos: ResultadoSelfie };
   videoApp?: { dadosExtraidos: ResultadoVideoApp };
   videoVeiculo?: { dadosExtraidos: ResultadoVideoVeiculo };
   biometria?: { dadosExtraidos: ResultadoBiometria };
 }
 
-export function cruzarDados(resultados: ResultadosTodos, cpfFormulario: string): ValidacaoIA {
+export function cruzarDados(resultados: ResultadosTodos, cadastro: DadosCadastro): ValidacaoIA {
   const cnh = resultados.cnh?.dadosExtraidos;
+  const comp = resultados.comprovante?.dadosExtraidos;
   const selfie = resultados.selfie?.dadosExtraidos;
   const videoApp = resultados.videoApp?.dadosExtraidos;
   const videoVeiculo = resultados.videoVeiculo?.dadosExtraidos;
   const biometria = resultados.biometria?.dadosExtraidos;
 
+  // Nome do cadastro confere com CNH (Levenshtein >= 85)
+  let nomeCadastroConfere: boolean | null = null;
+  if (cnh?.nome) {
+    const sim = calcularSimilaridade(cnh.nome, cadastro.nomeCompleto);
+    nomeCadastroConfere = sim >= 85;
+    console.log(`[cruzamento] nome cadastro="${cadastro.nomeCompleto}" vs CNH="${cnh.nome}" → ${sim}%`);
+  }
+
   // Nome confere: CNH vs perfil do app (Levenshtein >= 85)
   let nomeConfere: boolean | null = null;
   if (cnh?.nome && videoApp?.nomePerfil) {
-    nomeConfere = calcularSimilaridade(cnh.nome, videoApp.nomePerfil) >= 85;
+    const sim = calcularSimilaridade(cnh.nome, videoApp.nomePerfil);
+    nomeConfere = sim >= 85;
+    console.log(`[cruzamento] nome CNH="${cnh.nome}" vs app="${videoApp.nomePerfil}" → ${sim}%`);
   }
 
-  // CPF confere: CNH vs formulário (igualdade exata, ignorando formatação)
+  // CPF confere: CNH vs cadastro (igualdade exata, ignorando formatação)
   let cpfConfere: boolean | null = null;
   if (cnh?.cpf) {
     const cpfCNH = cnh.cpf.replace(/\D/g, '');
-    const cpfForm = cpfFormulario.replace(/\D/g, '');
-    cpfConfere = cpfCNH === cpfForm;
+    const cpfCad = cadastro.cpf.replace(/\D/g, '');
+    cpfConfere = cpfCNH === cpfCad;
+    console.log(`[cruzamento] CPF cadastro="${cpfCad}" vs CNH="${cpfCNH}" → ${cpfConfere ? 'OK' : 'DIVERGENTE'}`);
+  }
+
+  // Endereço confere: comprovante vs cadastro
+  let enderecoConfere: boolean | null = null;
+  if (comp) {
+    const checks: boolean[] = [];
+
+    if (comp.logradouro) {
+      checks.push(calcularSimilaridade(comp.logradouro, cadastro.logradouro) >= 80);
+    }
+    if (comp.numero) {
+      checks.push(normalizarEndereco(comp.numero) === normalizarEndereco(cadastro.numero));
+    }
+    if (comp.bairro && cadastro.bairro) {
+      checks.push(calcularSimilaridade(comp.bairro, cadastro.bairro) >= 80);
+    }
+    if (comp.cidade) {
+      checks.push(calcularSimilaridade(comp.cidade, cadastro.cidade) >= 85);
+    }
+    if (comp.estadoUF) {
+      checks.push(comp.estadoUF.toUpperCase() === cadastro.estadoUF.toUpperCase());
+    }
+    if (comp.cep && cadastro.cep) {
+      checks.push(comp.cep.replace(/\D/g, '') === cadastro.cep.replace(/\D/g, ''));
+    }
+
+    const acertos = checks.filter(Boolean).length;
+    enderecoConfere = checks.length > 0 && acertos >= Math.ceil(checks.length * 0.7);
+
+    console.log(`[cruzamento] endereço: ${acertos}/${checks.length} campos conferem → ${enderecoConfere ? 'OK' : 'DIVERGENTE'}`);
+    console.log(`[cruzamento] comprovante: log="${comp.logradouro}" n="${comp.numero}" bairro="${comp.bairro}" cidade="${comp.cidade}" uf="${comp.estadoUF}" cep="${comp.cep}"`);
+    console.log(`[cruzamento] cadastro:    log="${cadastro.logradouro}" n="${cadastro.numero}" bairro="${cadastro.bairro}" cidade="${cadastro.cidade}" uf="${cadastro.estadoUF}" cep="${cadastro.cep}"`);
   }
 
   // Placa confere: >= 2 de 3 fontes iguais
@@ -76,5 +141,5 @@ export function cruzarDados(resultados: ResultadosTodos, cpfFormulario: string):
     biometriaConfere = biometria.similarity >= 90;
   }
 
-  return { nomeConfere, placaConfere, cpfConfere, biometriaConfere, biometriaScore };
+  return { nomeCadastroConfere, nomeConfere, placaConfere, cpfConfere, enderecoConfere, biometriaConfere, biometriaScore };
 }

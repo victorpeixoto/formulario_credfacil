@@ -1,21 +1,25 @@
 # State
 
 **Last updated:** 2026-03-29
-**Session:** Implementação completa — Validação de Documentos com IA (T1-T30)
+**Session:** Spec criada — Login do Cliente Existente (gap no fluxo "Já sou cliente")
 
 ---
 
 ## Current Focus
 
+Feature "Login do Cliente Existente" — spec criada em `.specs/features/login-cliente-existente/spec.md`. Próximo passo: design e tasks para implementação.
+
 Feature "Validação de Documentos com IA" — implementada na branch `feature/validacao-documentos-ia`. Pendente: testes manuais (T33) e merge/deploy em produção.
 
 ## Active Work
 
+- Feature "Login do Cliente Existente": spec aprovada, aguardando design + tasks
 - Branch `feature/validacao-documentos-ia`: 7 commits, build ✅ sem erros
 - Próximo passo: testes manuais end-to-end (T33) antes do merge para master
 
 ## Recent Decisions
 
+- **2026-03-29:** Gap identificado no fluxo "Já sou cliente" — candidatos com conta eram redirecionados para WhatsApp em vez de /login. Spec criada para feature "Login do Cliente Existente". Solução: `/api/check-cpf` retorna `temSenha`, frontend ramifica para login ou criação de senha.
 - **2026-03-29:** Implementação completa da feature em 6 fases (T1-T30)
   - T1-T5: dependências, tipos TypeScript, route groups `(public)`/`(auth)`, `.env.local.example`
   - T6-T10: `lib/auth.ts`, `lib/r2.ts`, `lib/ai/gemini.ts`, `lib/ai/rekognition.ts`, `lib/email.ts`

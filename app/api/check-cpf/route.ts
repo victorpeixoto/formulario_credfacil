@@ -32,7 +32,9 @@ export async function POST(request: NextRequest) {
       const whatsapp = await getAvailableWhatsAppNumber(existingUser.contactId);
       return NextResponse.json({
         exists: true,
+        temSenha: !!existingUser.senhaHash,
         contactId: existingUser.contactId,
+        formCode: existingUser.formCode ?? null,
         whatsappLink: whatsapp?.whatsappLink || null,
       });
     } else {

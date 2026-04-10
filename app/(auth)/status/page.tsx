@@ -72,7 +72,7 @@ export default function PageStatus() {
 
       if (dados.statusFinal === 'APROVADO') {
         try {
-          const res = await fetch('/api/submit', { method: 'POST' });
+          const res = await fetch('/api/whatsapp-link', { method: 'POST' });
           if (res.ok) {
             const data = await res.json();
             setWhatsappLink(data.whatsappLink ?? null);

@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Extensão de arquivo inválida' }, { status: 400 });
   }
 
-  const { uploadUrl, fileKey } = await gerarPresignedUpload(payload.formCode, tipo, ext);
+  const { uploadUrl, fileKey, contentType } = await gerarPresignedUpload(payload.formCode, tipo, ext);
 
-  return NextResponse.json({ uploadUrl, fileKey });
+  return NextResponse.json({ uploadUrl, fileKey, contentType });
 }

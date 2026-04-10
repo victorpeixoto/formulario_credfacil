@@ -14,7 +14,7 @@ interface SlotConfig {
 }
 
 const SLOTS: SlotConfig[] = [
-  { tipo: 'cnh', label: 'CNH', instrucao: 'Foto frente e verso, legível', aceita: 'image/*,.pdf' },
+  { tipo: 'cnh', label: 'CNH', instrucao: 'Foto frente e verso, legível — imagem ou PDF', aceita: 'image/*,.pdf' },
   { tipo: 'comprovante', label: 'Comprovante de residência', instrucao: 'Emitido há no máximo 90 dias', aceita: 'image/*,.pdf' },
   { tipo: 'selfie', label: 'Selfie ao lado do veículo', instrucao: 'Seu rosto e a placa visíveis', aceita: 'image/*' },
   { tipo: 'videoApp', label: 'Vídeo do aplicativo', instrucao: 'Tela do app sem cortes', aceita: 'video/*' },
@@ -57,9 +57,13 @@ export default function PageDocumentos() {
       const ext = file.name.split('.').pop() ?? 'jpg';
       const res = await fetch(`/api/upload/presigned-url?tipo=${tipo}&ext=${ext}`);
       if (!res.ok) throw new Error('Erro ao obter URL de upload');
-      const { uploadUrl, fileKey } = await res.json();
+      const { uploadUrl, fileKey, contentType } = await res.json();
 
-      await fetch(uploadUrl, { method: 'PUT', body: file });
+      await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': contentType },
+        body: file,
+      });
 
       const preview = file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined;
 

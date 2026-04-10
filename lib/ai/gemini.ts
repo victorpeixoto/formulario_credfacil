@@ -1,7 +1,8 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import sharp from 'sharp';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const MODEL = 'gemini-2.0-flash';
+const MODEL = 'gemini-2.5-flash';
 const RETRY_DELAY_MS = 5000;
 const MAX_RETRIES = 2;
 
@@ -47,6 +48,28 @@ export async function analisarImagem(
     const result = await model.generateContent([
       prompt,
       { inlineData: { data, mimeType } },
+    ]);
+    const text = result.response.text();
+    return extrairJSON(text);
+  });
+}
+
+export async function analisarImagemComEspelho(
+  imageUrl: string,
+  prompt: string
+): Promise<Record<string, unknown>> {
+  return chamarComRetry(async () => {
+    const model = genAI.getGenerativeModel({ model: MODEL });
+    const { data, mimeType } = await downloadAsBase64(imageUrl);
+
+    const originalBuffer = Buffer.from(data, 'base64');
+    const espelhadaBuffer = await sharp(originalBuffer).flop().toBuffer();
+    const espelhadaBase64 = espelhadaBuffer.toString('base64');
+
+    const result = await model.generateContent([
+      prompt,
+      { inlineData: { data, mimeType } },
+      { inlineData: { data: espelhadaBase64, mimeType } },
     ]);
     const text = result.response.text();
     return extrairJSON(text);

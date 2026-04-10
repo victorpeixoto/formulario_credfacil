@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
   }
 
   const client = await clientPromise;
-  const db = client.db();
+  const db = client.db('credfacil');
   const candidato = await db.collection('conversations').findOne({ cpf });
 
   // Retornar sucesso mesmo se não encontrado (segurança — evita enumeração)

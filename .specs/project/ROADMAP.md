@@ -79,6 +79,14 @@
 - /api/check-cpf com lookup MongoDB
 - Redirecionamento para suporte WhatsApp se já cadastrado
 
+**Login do Cliente Existente** - PLANNED
+
+- Gap identificado: candidatos com conta criada eram enviados ao WhatsApp ao clicar "Já sou cliente"
+- /api/check-cpf retorna `temSenha: boolean`
+- Se tem senha → redirect para /login?cpf={cpf} (pré-preenchido)
+- Se sem senha → redirect para /aprovado (criar senha)
+- WhatsApp de suporte reservado apenas para casos de fallback
+
 **Alertas de Operação** - COMPLETE
 
 - Telegram alert quando todos os números estão indisponíveis
