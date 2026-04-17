@@ -4,7 +4,7 @@
 
 **For:** Motoristas de aplicativo (Uber, 99, iFood, etc.) que buscam crédito consignado pela Credfácil
 
-**Solves:** Bot WhatsApp estava sendo banido pela Meta por coletar CPF, referências pessoais e endereço diretamente no chat — padrão detectado como phishing/spam. O formulário web elimina esse vetor e mantém o WhatsApp apenas para o contato final.
+**Solves:** Bot WhatsApp estava sendo banido pela Meta por coletar CPF e endereço diretamente no chat — padrão detectado como phishing/spam. O formulário web elimina esse vetor e mantém o WhatsApp apenas para o contato final.
 
 ## Goals
 
@@ -24,7 +24,7 @@
 ## Scope
 
 **v1 inclui:**
-- Formulário de 7 cards animados com avaliação silenciosa
+- Formulário de 6 cards animados com avaliação silenciosa
 - Persistência de rascunho via localStorage
 - Rodízio de números WhatsApp via Chatwoot + Meta Graph API
 - Rastreamento dual (Pixel + CAPI) para Meta Ads

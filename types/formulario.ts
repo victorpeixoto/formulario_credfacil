@@ -6,12 +6,6 @@ export type UltimaEntrega = 'hoje' | 'esta_semana' | '8_30_dias' | 'mais_30_dias
 
 export type FaixaFaturamento = 'menos_2k' | '2k_3500' | '3500_5k' | 'mais_5k';
 
-export interface Referencia {
-  nome: string;
-  telefone: string;
-  parentesco: string;
-}
-
 export interface EstadoFormulario {
   // Card 1
   apps: AppTrabalho[];
@@ -22,8 +16,6 @@ export interface EstadoFormulario {
   // Card 4
   faturamento: FaixaFaturamento | null;
   // Card 5
-  referencias: Referencia[];
-  // Card 6
   nomeCompleto: string;
   cpf: string;
   email: string;
@@ -34,7 +26,7 @@ export interface EstadoFormulario {
   cep: string;
   cidade: string;
   estadoUF: string;
-  // Card 7
+  // Card 6
   aceitouCondicoes: boolean;
 }
 
@@ -45,7 +37,6 @@ export interface PayloadSubmit {
     ultimaCorridaData: UltimaEntrega;
     faturamentoBruto: FaixaFaturamento;
   };
-  referencias: Referencia[];
   nomeCompleto: string;
   cpf: string;
   email: string;

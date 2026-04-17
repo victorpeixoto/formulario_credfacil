@@ -8,15 +8,14 @@ export async function POST(req: NextRequest) {
   try {
     const body: PayloadSubmit = await req.json();
 
-    const { trabalho, referencias, nomeCompleto, cpf, email, logradouro, numero, complemento, bairro, cep, cidade, estadoUF, aceitouCondicoes } = body;
+    const { trabalho, nomeCompleto, cpf, email, logradouro, numero, complemento, bairro, cep, cidade, estadoUF, aceitouCondicoes } = body;
 
     // Validação server-side rigorosa
     if (!trabalho?.apps?.length) return NextResponse.json({ erro: 'Selecione ao menos um App.' }, { status: 400 });
     if (!trabalho.tempoAtuacao || trabalho.tempoAtuacao === null) return NextResponse.json({ erro: 'Tempo de atuação é obrigatório.' }, { status: 400 });
     if (!trabalho.ultimaCorridaData || trabalho.ultimaCorridaData === null) return NextResponse.json({ erro: 'Data da última corrida é obrigatória.' }, { status: 400 });
     if (!trabalho.faturamentoBruto || trabalho.faturamentoBruto === null) return NextResponse.json({ erro: 'Faturamento é obrigatório.' }, { status: 400 });
-    
-    if (!referencias || referencias.length < 4) return NextResponse.json({ erro: 'Mínimo 4 referências.' }, { status: 400 });
+
     if (!nomeCompleto?.trim()) return NextResponse.json({ erro: 'Nome obrigatório.' }, { status: 400 });
     if (!cpf || cpf.replace(/\D/g, '').length !== 11) return NextResponse.json({ erro: 'CPF inválido.' }, { status: 400 });
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return NextResponse.json({ erro: 'E-mail inválido.' }, { status: 400 });
@@ -63,7 +62,6 @@ export async function POST(req: NextRequest) {
           estadoUF,
           trabalho,
           aceitouCondicoes,
-          referencias,
           documentosSolicitados: false,
           transferidoParaHumano: false,
           qualificacao_naoAtende: false,

@@ -8,7 +8,7 @@
 **Configuration:** `MONGODB_URI` em `.env.local`
 **Authentication:** Connection string com usuário/senha no URI
 **Collection:** `credfacil.conversations`
-**Key schema fields:** `cpf` (upsert key), `contactId`, `formCode`, `status`, `isCompleted`, `trabalho`, `referencias`, dados pessoais
+**Key schema fields:** `cpf` (upsert key), `contactId`, `formCode`, `status`, `isCompleted`, `trabalho`, dados pessoais
 
 ---
 

@@ -103,7 +103,7 @@ Campos principais:
   - formCode: UUID v4 (sempre novo por submit)
   - status: 'ETAPA_4' → sinaliza para n8n iniciar ETAPA_5
   - isCompleted: boolean
-  - trabalho, referencias, dados pessoais, endereço
+  - trabalho, dados pessoais, endereço
   - whatsappLink: link gerado após rotação
 ```
 

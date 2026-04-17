@@ -18,12 +18,14 @@ interface Props {
   onChange: (campo: string, valor: string) => void;
   onAvancar: () => void;
   onVoltar?: () => void;
+  loading?: boolean;
+  label?: string;
 }
 
 export default function CardDadosPessoais({
   nomeCompleto, cpf, email,
   logradouro, numero, complemento, bairro, cep, cidade, estadoUF,
-  onChange, onAvancar, onVoltar,
+  onChange, onAvancar, onVoltar, loading, label,
 }: Props) {
   const [tocados, setTocados] = useState<Record<string, boolean>>({});
   const [buscandoCep, setBuscandoCep] = useState(false);
@@ -218,7 +220,13 @@ export default function CardDadosPessoais({
         )}
       </div>
 
-      <BotaoAvancar onClick={onAvancar} disabled={!podeContinuar} onVoltar={onVoltar} />
+      <BotaoAvancar
+        onClick={onAvancar}
+        disabled={!podeContinuar}
+        loading={loading}
+        label={label}
+        onVoltar={onVoltar}
+      />
     </div>
   );
 }
