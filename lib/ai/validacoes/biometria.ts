@@ -8,21 +8,29 @@ export async function validarBiometria(cnhUrl: string, selfieUrl: string): Promi
 }> {
   const resultado = await compararRostos(cnhUrl, selfieUrl);
 
+  if (resultado.rostoNaoDetectado) {
+    return {
+      aprovado: false,
+      motivo: resultado.motivo ?? 'Não detectamos rosto na CNH ou na selfie. Refaça com boa iluminação.',
+      dadosExtraidos: { similarity: resultado.similarity, match: resultado.match },
+    };
+  }
+
   if (resultado.similarity >= 90) {
-    return { aprovado: true, motivo: null, dadosExtraidos: resultado };
+    return { aprovado: true, motivo: null, dadosExtraidos: { similarity: resultado.similarity, match: resultado.match } };
   }
 
   if (resultado.similarity >= 80) {
     return {
       aprovado: false,
       motivo: `Similaridade intermediária (${resultado.similarity.toFixed(1)}%) — requer revisão humana`,
-      dadosExtraidos: resultado,
+      dadosExtraidos: { similarity: resultado.similarity, match: resultado.match },
     };
   }
 
   return {
     aprovado: false,
     motivo: `Biometria não confirmada (similaridade: ${resultado.similarity.toFixed(1)}%)`,
-    dadosExtraidos: resultado,
+    dadosExtraidos: { similarity: resultado.similarity, match: resultado.match },
   };
 }

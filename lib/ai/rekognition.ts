@@ -37,10 +37,17 @@ async function downloadAsBytes(url: string): Promise<Uint8Array> {
   return new Uint8Array(buffer);
 }
 
+export interface ResultadoComparacao {
+  similarity: number;
+  match: boolean;
+  rostoNaoDetectado?: boolean;
+  motivo?: string;
+}
+
 export async function compararRostos(
   sourceUrl: string,
   targetUrl: string
-): Promise<{ similarity: number; match: boolean }> {
+): Promise<ResultadoComparacao> {
   const [sourceBytes, targetBytes] = await Promise.all([
     downloadAsBytes(sourceUrl),
     downloadAsBytes(targetUrl),
@@ -52,12 +59,33 @@ export async function compararRostos(
     SimilarityThreshold: 80,
   });
 
-  const response = await client.send(command);
+  try {
+    const response = await client.send(command);
 
-  if (!response.FaceMatches || response.FaceMatches.length === 0) {
-    return { similarity: 0, match: false };
+    if (!response.FaceMatches || response.FaceMatches.length === 0) {
+      const semRostoFonte = !response.SourceImageFace;
+      return {
+        similarity: 0,
+        match: false,
+        rostoNaoDetectado: semRostoFonte,
+        motivo: semRostoFonte
+          ? 'Não detectamos rosto na CNH. Refaça a foto com boa iluminação.'
+          : undefined,
+      };
+    }
+
+    const similarity = response.FaceMatches[0].Similarity ?? 0;
+    return { similarity, match: similarity >= 90 };
+  } catch (err) {
+    const name = (err as { name?: string } | null)?.name;
+    if (name === 'InvalidParameterException') {
+      return {
+        similarity: 0,
+        match: false,
+        rostoNaoDetectado: true,
+        motivo: 'Não detectamos rosto na CNH ou na selfie. Refaça com boa iluminação e enquadramento centralizado.',
+      };
+    }
+    throw err;
   }
-
-  const similarity = response.FaceMatches[0].Similarity ?? 0;
-  return { similarity, match: similarity >= 90 };
 }

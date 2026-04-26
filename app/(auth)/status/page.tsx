@@ -34,11 +34,11 @@ const COR: Record<string, string> = {
 };
 
 export default function PageStatus() {
-  const [documentos, setDocumentos] = useState<Record<string, DocumentoStatus>>(
+  const [documentos, setDocumentos] = useState<Record<string, DocumentoStatus>>(() =>
     Object.fromEntries(
       ['cnh', 'comprovante', 'selfie', 'videoApp', 'videoVeiculo'].map((t) => [
         t,
-        { tipo: t, status: 'aguardando' },
+        { tipo: t, status: 'analisando' },
       ])
     )
   );
@@ -94,14 +94,9 @@ export default function PageStatus() {
   };
 
   useEffect(() => {
-    // Marcar todos como analisando ao conectar
-    setDocumentos((prev) =>
-      Object.fromEntries(
-        Object.entries(prev).map(([k, v]) => [k, { ...v, status: 'analisando' as const }])
-      )
-    );
     conectar();
     return () => esRef.current?.close();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -118,23 +113,40 @@ export default function PageStatus() {
       </div>
 
       <div className="flex flex-col gap-3">
-        {Object.values(documentos).map((doc) => (
-          <div key={doc.tipo} className="flex items-center gap-3 p-3 rounded-xl border border-gray-100">
-            <span className={`text-lg font-bold w-6 text-center ${COR[doc.status]}`}>
-              {ICONE[doc.status]}
-            </span>
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-800">{LABELS[doc.tipo]}</p>
-              {doc.motivo && <p className="text-xs text-red-400 mt-0.5">{doc.motivo}</p>}
+        {Object.values(documentos).map((doc) => {
+          const ehErroTecnico = doc.status === 'erro';
+          return (
+            <div
+              key={doc.tipo}
+              className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                doc.status === 'analisando'
+                  ? 'border-blue-200 bg-blue-50/50 animate-pulse'
+                  : 'border-gray-100'
+              }`}
+            >
+              <span className={`text-lg font-bold w-6 text-center ${COR[doc.status]}`}>
+                {ICONE[doc.status]}
+              </span>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-800">{LABELS[doc.tipo]}</p>
+                {doc.motivo && !ehErroTecnico && (
+                  <p className="text-xs text-red-400 mt-0.5">{doc.motivo}</p>
+                )}
+                {ehErroTecnico && (
+                  <p className="text-xs text-yellow-600 mt-0.5">
+                    Tivemos um problema técnico. Tente reenviar este documento.
+                  </p>
+                )}
+              </div>
+              <span className={`text-xs font-semibold ${COR[doc.status]}`}>
+                {doc.status === 'aguardando' ? 'Aguardando' :
+                 doc.status === 'analisando' ? 'Analisando' :
+                 doc.status === 'aprovado' ? 'Aprovado' :
+                 doc.status === 'rejeitado' ? 'Rejeitado' : 'Erro'}
+              </span>
             </div>
-            <span className={`text-xs font-semibold ${COR[doc.status]}`}>
-              {doc.status === 'aguardando' ? 'Aguardando' :
-               doc.status === 'analisando' ? 'Analisando' :
-               doc.status === 'aprovado' ? 'Aprovado' :
-               doc.status === 'rejeitado' ? 'Rejeitado' : 'Erro'}
-            </span>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {statusFinal === 'APROVADO' && (

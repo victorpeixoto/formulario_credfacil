@@ -98,14 +98,25 @@ async function executarPipeline(
     if (i > 0) await new Promise((r) => setTimeout(r, DELAY_ENTRE_VALIDACOES_MS));
     console.log(`[validacao] Iniciando: ${tipo}`);
     const inicio = Date.now();
-    const resultado = await fn().then(
-      (v) => ({ status: 'fulfilled' as const, value: v }),
-      (e) => ({ status: 'rejected' as const, reason: e })
-    );
+    const executarComRetry = async () => {
+      try {
+        return { status: 'fulfilled' as const, value: await fn() };
+      } catch (e) {
+        console.warn(`[validacao] ${tipo}: 1ª tentativa falhou (${e instanceof Error ? e.message : String(e)}), tentando novamente em 3s...`);
+        await new Promise((r) => setTimeout(r, 3000));
+        try {
+          return { status: 'fulfilled' as const, value: await fn() };
+        } catch (e2) {
+          return { status: 'rejected' as const, reason: e2 };
+        }
+      }
+    };
+    const resultado = await executarComRetry();
     const duracaoMs = Date.now() - inicio;
 
     if (resultado.status === 'fulfilled') {
-      let { aprovado, motivo, dadosExtraidos } = resultado.value;
+      let { aprovado, motivo } = resultado.value;
+      const { dadosExtraidos } = resultado.value;
       console.log(
         `[validacao] ${tipo}: ${aprovado ? 'APROVADO' : 'REJEITADO'} (${duracaoMs}ms)` +
         (motivo ? ` | motivo: ${motivo}` : '')

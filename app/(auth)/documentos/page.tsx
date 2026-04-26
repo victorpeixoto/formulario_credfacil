@@ -1,90 +1,111 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { TipoDocumento } from '@/types/documentos';
+import PassoWizard from '@/components/captura/passo-wizard';
+import CapturaDocumento from '@/components/captura/captura-documento';
+import CapturaSelfie from '@/components/captura/captura-selfie';
+import CapturaVideo from '@/components/captura/captura-video';
 
-const TAMANHO_MAX_MB = 50;
+type ModoCaptura = 'documento-cnh' | 'documento-comprovante' | 'selfie' | 'videoApp' | 'videoVeiculo' | null;
 
-interface SlotConfig {
+interface ItemEnviado {
   tipo: TipoDocumento;
-  label: string;
-  instrucao: string;
-  aceita: string;
+  fileKey: string;
+  previewUrl?: string;
+  enviando?: boolean;
 }
 
-const SLOTS: SlotConfig[] = [
-  { tipo: 'cnh', label: 'CNH', instrucao: 'Foto frente e verso, legível — imagem ou PDF', aceita: 'image/*,.pdf' },
-  { tipo: 'comprovante', label: 'Comprovante de residência', instrucao: 'Emitido há no máximo 90 dias', aceita: 'image/*,.pdf' },
-  { tipo: 'selfie', label: 'Selfie ao lado do veículo', instrucao: 'Seu rosto e a placa visíveis', aceita: 'image/*' },
-  { tipo: 'videoApp', label: 'Vídeo do aplicativo', instrucao: 'Tela do app sem cortes', aceita: 'video/*' },
-  { tipo: 'videoVeiculo', label: 'Vídeo do veículo', instrucao: 'Veículo ligado, placa visível', aceita: 'video/*' },
-];
+const ORDEM: TipoDocumento[] = ['cnh', 'comprovante', 'selfie', 'videoApp', 'videoVeiculo'];
 
-interface UploadState {
-  status: 'idle' | 'uploading' | 'done' | 'error';
-  fileKey?: string;
-  preview?: string;
-  erro?: string;
-}
+const TITULOS: Record<TipoDocumento, { titulo: string; subtitulo: string }> = {
+  cnh: {
+    titulo: 'Sua CNH',
+    subtitulo: 'Vamos começar pela sua habilitação. Frente e verso, bem legível.',
+  },
+  comprovante: {
+    titulo: 'Comprovante de residência',
+    subtitulo: 'Conta de luz, água, internet — emitido nos últimos 90 dias.',
+  },
+  selfie: {
+    titulo: 'Selfie ao lado do veículo',
+    subtitulo: 'Seu rosto e a placa do veículo, no mesmo enquadramento.',
+  },
+  videoApp: {
+    titulo: 'Vídeo do aplicativo',
+    subtitulo: 'Mostre seu perfil no app de motorista, com faturamento e corridas.',
+  },
+  videoVeiculo: {
+    titulo: 'Vídeo do veículo',
+    subtitulo: 'Veículo ligado, placa visível, volta de 360°.',
+  },
+};
 
 export default function PageDocumentos() {
   const router = useRouter();
-  const [uploads, setUploads] = useState<Record<TipoDocumento, UploadState>>({
-    cnh: { status: 'idle' },
-    comprovante: { status: 'idle' },
-    selfie: { status: 'idle' },
-    videoApp: { status: 'idle' },
-    videoVeiculo: { status: 'idle' },
+  const [passo, setPasso] = useState(0); // 0..4 = capturas, 5 = resumo
+  const [enviados, setEnviados] = useState<Record<TipoDocumento, ItemEnviado | undefined>>({
+    cnh: undefined,
+    comprovante: undefined,
+    selfie: undefined,
+    videoApp: undefined,
+    videoVeiculo: undefined,
   });
-  const [enviando, setEnviando] = useState(false);
-  const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const [modoCaptura, setModoCaptura] = useState<ModoCaptura>(null);
+  const [enviandoPipeline, setEnviandoPipeline] = useState(false);
+  const [erroUpload, setErroUpload] = useState<string | null>(null);
 
-  const todosEnviados = SLOTS.every((s) => uploads[s.tipo].status === 'done');
+  const tipoAtual = ORDEM[passo];
+  const todosCompletos = ORDEM.every((t) => enviados[t]?.fileKey);
 
-  const handleSelecionar = async (tipo: TipoDocumento, file: File) => {
-    if (file.size > TAMANHO_MAX_MB * 1024 * 1024) {
-      setUploads((prev) => ({
-        ...prev,
-        [tipo]: { status: 'error', erro: `Arquivo muito grande (máx. ${TAMANHO_MAX_MB}MB)` },
-      }));
-      return;
-    }
-
-    setUploads((prev) => ({ ...prev, [tipo]: { status: 'uploading' } }));
-
+  const fazerUpload = async (tipo: TipoDocumento, file: File, previewUrl?: string) => {
+    setErroUpload(null);
+    setEnviados((prev) => ({
+      ...prev,
+      [tipo]: { tipo, fileKey: '', previewUrl, enviando: true },
+    }));
     try {
-      const ext = file.name.split('.').pop() ?? 'jpg';
+      const ext = file.name.split('.').pop() ?? (file.type.split('/')[1] || 'bin');
       const res = await fetch(`/api/upload/presigned-url?tipo=${tipo}&ext=${ext}`);
-      if (!res.ok) throw new Error('Erro ao obter URL de upload');
+      if (!res.ok) throw new Error('Falha ao obter URL de upload');
       const { uploadUrl, fileKey, contentType } = await res.json();
 
-      await fetch(uploadUrl, {
+      const upRes = await fetch(uploadUrl, {
         method: 'PUT',
         headers: { 'Content-Type': contentType },
         body: file,
       });
+      if (!upRes.ok) throw new Error(`Upload falhou (${upRes.status})`);
 
-      const preview = file.type.startsWith('image/') ? URL.createObjectURL(file) : undefined;
-
-      setUploads((prev) => ({
+      setEnviados((prev) => ({
         ...prev,
-        [tipo]: { status: 'done', fileKey, preview },
+        [tipo]: { tipo, fileKey, previewUrl, enviando: false },
       }));
+      setModoCaptura(null);
+      // Avança automaticamente
+      setPasso((p) => Math.min(p + 1, ORDEM.length));
     } catch (err) {
-      console.error('[documentos] upload error:', err);
-      setUploads((prev) => ({
-        ...prev,
-        [tipo]: { status: 'error', erro: 'Erro no envio. Tente novamente.' },
-      }));
+      console.error('[documentos] upload erro:', err);
+      setEnviados((prev) => ({ ...prev, [tipo]: undefined }));
+      setErroUpload('Erro ao enviar. Verifique sua conexão e tente novamente.');
+      setModoCaptura(null);
     }
   };
 
-  const handleIniciarValidacao = async () => {
-    setEnviando(true);
+  const abrirCapturaPara = (tipo: TipoDocumento) => {
+    if (tipo === 'cnh') setModoCaptura('documento-cnh');
+    else if (tipo === 'comprovante') setModoCaptura('documento-comprovante');
+    else if (tipo === 'selfie') setModoCaptura('selfie');
+    else if (tipo === 'videoApp') setModoCaptura('videoApp');
+    else if (tipo === 'videoVeiculo') setModoCaptura('videoVeiculo');
+  };
+
+  const enviarParaAnalise = async () => {
+    setEnviandoPipeline(true);
     try {
       const documentos = Object.fromEntries(
-        SLOTS.map((s) => [s.tipo, uploads[s.tipo].fileKey!])
+        ORDEM.map((t) => [t, enviados[t]!.fileKey])
       ) as Record<TipoDocumento, string>;
 
       const res = await fetch('/api/validacao/iniciar', {
@@ -92,78 +113,186 @@ export default function PageDocumentos() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ documentos }),
       });
-
       if (!res.ok) throw new Error('Erro ao iniciar validação');
       router.push('/status');
     } catch (err) {
-      console.error('[documentos] iniciar error:', err);
-      setEnviando(false);
+      console.error('[documentos] iniciar erro:', err);
+      setEnviandoPipeline(false);
+      setErroUpload('Não foi possível iniciar a análise. Tente novamente.');
     }
   };
 
-  return (
-    <main className="min-h-dvh bg-white flex flex-col px-6 py-10 max-w-md mx-auto gap-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-gray-900">Envie seus documentos</h1>
-        <p className="text-gray-500 text-sm">Todos os 5 documentos são obrigatórios.</p>
-      </div>
+  // Tela de captura ativa
+  if (modoCaptura === 'selfie') {
+    return (
+      <CapturaSelfie
+        onCancelar={() => setModoCaptura(null)}
+        onConfirmar={(blob, url) => {
+          const file = new File([blob], `selfie-${Date.now()}.jpg`, { type: 'image/jpeg' });
+          fazerUpload('selfie', file, url);
+        }}
+      />
+    );
+  }
 
-      <div className="flex flex-col gap-4">
-        {SLOTS.map(({ tipo, label, instrucao, aceita }) => {
-          const upload = uploads[tipo];
-          return (
-            <div key={tipo} className="border border-gray-200 rounded-2xl p-4 flex flex-col gap-2">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="font-semibold text-gray-800 text-sm">{label}</p>
-                  <p className="text-gray-400 text-xs">{instrucao}</p>
-                </div>
-                {upload.status === 'done' && (
-                  <span className="text-green-500 text-xs font-semibold">✓ Enviado</span>
-                )}
-                {upload.status === 'uploading' && (
-                  <span className="text-blue-400 text-xs">Enviando...</span>
-                )}
-                {upload.status === 'error' && (
-                  <span className="text-red-400 text-xs">Erro</span>
-                )}
-              </div>
-
-              {upload.preview && (
-                <img src={upload.preview} alt={label} className="w-full h-32 object-cover rounded-xl" />
-              )}
-
-              {upload.erro && <p className="text-red-400 text-xs">{upload.erro}</p>}
-
-              <input
-                ref={(el) => { inputRefs.current[tipo] = el; }}
-                type="file"
-                accept={aceita}
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleSelecionar(tipo, file);
-                }}
-              />
-              <button
-                onClick={() => inputRefs.current[tipo]?.click()}
-                disabled={upload.status === 'uploading'}
-                className="w-full py-2 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-40"
-              >
-                {upload.status === 'done' ? 'Trocar arquivo' : 'Selecionar arquivo'}
-              </button>
-            </div>
-          );
-        })}
-      </div>
-
-      <button
-        onClick={handleIniciarValidacao}
-        disabled={!todosEnviados || enviando}
-        className="w-full py-4 rounded-2xl bg-green-500 hover:bg-green-600 active:scale-95 text-white font-semibold text-lg transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+  // Resumo (passo 5)
+  if (passo >= ORDEM.length) {
+    return (
+      <PassoWizard
+        passoAtual={ORDEM.length}
+        totalPassos={ORDEM.length}
+        titulo="Tudo pronto!"
+        subtitulo="Confira seus documentos antes de enviar para análise."
+        onVoltar={() => setPasso(ORDEM.length - 1)}
       >
-        {enviando ? 'Aguarde...' : `Enviar para análise (${SLOTS.filter((s) => uploads[s.tipo].status === 'done').length}/5)`}
-      </button>
-    </main>
+        <div className="flex flex-col gap-3 mt-2">
+          {ORDEM.map((tipo) => {
+            const item = enviados[tipo];
+            return (
+              <div key={tipo} className="flex items-center gap-3 p-3 rounded-xl border border-gray-100">
+                {item?.previewUrl ? (
+                  <img src={item.previewUrl} alt={TITULOS[tipo].titulo} className="w-12 h-12 rounded-lg object-cover" />
+                ) : (
+                  <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center">
+                    <span className="text-gray-400 text-xs">{tipo.startsWith('video') ? '🎥' : '📄'}</span>
+                  </div>
+                )}
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-800">{TITULOS[tipo].titulo}</p>
+                  <p className="text-xs text-green-500">✓ Enviado</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setEnviados((prev) => ({ ...prev, [tipo]: undefined }));
+                    setPasso(ORDEM.indexOf(tipo));
+                  }}
+                  className="text-xs text-blue-500 hover:underline"
+                >
+                  Refazer
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        {erroUpload && <p className="text-red-500 text-sm mt-3">{erroUpload}</p>}
+
+        <div className="mt-auto flex flex-col gap-3 pt-6">
+          <button
+            onClick={enviarParaAnalise}
+            disabled={!todosCompletos || enviandoPipeline}
+            className="w-full py-4 rounded-2xl bg-green-500 hover:bg-green-600 active:scale-95 text-white font-semibold text-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {enviandoPipeline ? 'Iniciando análise...' : 'Enviar para análise'}
+          </button>
+        </div>
+      </PassoWizard>
+    );
+  }
+
+  const titulo = TITULOS[tipoAtual];
+  const itemAtual = enviados[tipoAtual];
+
+  return (
+    <PassoWizard
+      passoAtual={passo + 1}
+      totalPassos={ORDEM.length}
+      titulo={titulo.titulo}
+      subtitulo={titulo.subtitulo}
+      onVoltar={passo > 0 ? () => setPasso(passo - 1) : undefined}
+    >
+      {modoCaptura === 'documento-cnh' && (
+        <CapturaDocumento
+          tipo="cnh"
+          onCancelar={() => setModoCaptura(null)}
+          onConfirmar={(file, url) => fazerUpload('cnh', file, url)}
+        />
+      )}
+      {modoCaptura === 'documento-comprovante' && (
+        <CapturaDocumento
+          tipo="comprovante"
+          onCancelar={() => setModoCaptura(null)}
+          onConfirmar={(file, url) => fazerUpload('comprovante', file, url)}
+        />
+      )}
+      {modoCaptura === 'videoApp' && (
+        <CapturaVideo
+          tipo="videoApp"
+          onCancelar={() => setModoCaptura(null)}
+          onConfirmar={(file, url) => fazerUpload('videoApp', file, url)}
+        />
+      )}
+      {modoCaptura === 'videoVeiculo' && (
+        <CapturaVideo
+          tipo="videoVeiculo"
+          onCancelar={() => setModoCaptura(null)}
+          onConfirmar={(file, url) => fazerUpload('videoVeiculo', file, url)}
+        />
+      )}
+
+      {!modoCaptura && (
+        <div className="flex flex-col gap-5 flex-1">
+          {itemAtual?.enviando && (
+            <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex items-center gap-3">
+              <div className="w-5 h-5 rounded-full border-2 border-blue-300 border-t-blue-600 animate-spin" />
+              <p className="text-blue-800 text-sm">Enviando arquivo...</p>
+            </div>
+          )}
+
+          {itemAtual?.fileKey && !itemAtual.enviando && (
+            <div className="bg-green-50 border border-green-100 rounded-2xl p-4 flex items-center gap-3">
+              {itemAtual.previewUrl ? (
+                <img src={itemAtual.previewUrl} alt="Pré-visualização" className="w-14 h-14 rounded-lg object-cover" />
+              ) : (
+                <div className="w-14 h-14 rounded-lg bg-green-100 flex items-center justify-center">
+                  <span className="text-2xl">{tipoAtual.startsWith('video') ? '🎥' : '📄'}</span>
+                </div>
+              )}
+              <div className="flex-1">
+                <p className="text-green-800 text-sm font-semibold">Documento enviado</p>
+                <p className="text-green-600 text-xs">Pronto para o próximo passo</p>
+              </div>
+            </div>
+          )}
+
+          {erroUpload && (
+            <div className="bg-red-50 border border-red-100 rounded-2xl p-4">
+              <p className="text-red-700 text-sm">{erroUpload}</p>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-3 mt-auto pt-6">
+            {!itemAtual?.fileKey && (
+              <button
+                onClick={() => abrirCapturaPara(tipoAtual)}
+                className="w-full py-4 rounded-2xl bg-green-500 hover:bg-green-600 active:scale-95 text-white font-semibold text-lg transition-all"
+              >
+                {tipoAtual.startsWith('video') ? 'Continuar' : tipoAtual === 'selfie' ? 'Abrir câmera' : 'Enviar documento'}
+              </button>
+            )}
+
+            {itemAtual?.fileKey && !itemAtual.enviando && (
+              <>
+                <button
+                  onClick={() => setPasso(passo + 1)}
+                  className="w-full py-4 rounded-2xl bg-green-500 hover:bg-green-600 active:scale-95 text-white font-semibold text-lg transition-all"
+                >
+                  Continuar
+                </button>
+                <button
+                  onClick={() => {
+                    setEnviados((prev) => ({ ...prev, [tipoAtual]: undefined }));
+                    abrirCapturaPara(tipoAtual);
+                  }}
+                  className="w-full py-3 rounded-2xl text-gray-500 font-medium text-sm hover:bg-gray-50 active:scale-95 transition-all"
+                >
+                  Refazer
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </PassoWizard>
   );
 }

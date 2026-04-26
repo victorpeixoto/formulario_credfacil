@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
       const db = client.db('credfacil');
 
       const inicio = Date.now();
-      let estadoAnterior: Record<string, string> = {};
+      const estadoAnterior: Record<string, string> = {};
 
       while (Date.now() - inicio < MAX_WAIT_MS) {
         const candidato = await db.collection('conversations').findOne({ formCode });
@@ -43,15 +43,24 @@ export async function GET(req: NextRequest) {
         const docs = candidato.documentos ?? {};
         const statusDocumentos: string = candidato.statusDocumentos ?? 'PROCESSANDO';
 
+        // Mapear status do DB para o vocabulário da UI
+        const mapearStatus = (statusDb: string | undefined): string => {
+          if (!statusDb || statusDb === 'pendente' || statusDb === 'enviado') return 'analisando';
+          if (statusDb === 'processando') return 'analisando';
+          if (statusDb === 'aprovado' || statusDb === 'rejeitado' || statusDb === 'erro') return statusDb;
+          return 'analisando';
+        };
+
         // Enviar eventos para documentos que mudaram de status
         for (const tipo of ['cnh', 'comprovante', 'selfie', 'videoApp', 'videoVeiculo']) {
           const doc = docs[tipo];
-          if (doc && doc.status !== estadoAnterior[tipo]) {
-            estadoAnterior[tipo] = doc.status;
+          const statusUI = mapearStatus(doc?.status);
+          if (statusUI !== estadoAnterior[tipo]) {
+            estadoAnterior[tipo] = statusUI;
             send('documento', {
               tipo,
-              status: doc.status,
-              resultado: doc.resultado ?? null,
+              status: statusUI,
+              resultado: doc?.resultado ?? null,
             });
           }
         }
