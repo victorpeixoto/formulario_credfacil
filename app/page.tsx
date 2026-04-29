@@ -48,6 +48,7 @@ export default function Home() {
   const [mostrarBanner, setMostrarBanner] = useState(false);
   const [rascunhoSalvo, setRascunhoSalvo] = useState<{ card: number; estado: EstadoFormulario } | null>(null);
   const [cpfExistenteErro, setCpfExistenteErro] = useState<string | undefined>(undefined);
+  const [cienteFaturamento, setCienteFaturamento] = useState(false);
 
   useEffect(() => {
     try {
@@ -306,6 +307,8 @@ export default function Home() {
             <CardFaturamento
               valor={estado.faturamento}
               onChange={(v) => setEstado((e) => ({ ...e, faturamento: v }))}
+              ciente={cienteFaturamento}
+              onCienteChange={setCienteFaturamento}
               onAvancar={avaliarEAvancar}
               onVoltar={voltar}
             />
