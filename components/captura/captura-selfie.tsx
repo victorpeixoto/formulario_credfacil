@@ -13,6 +13,7 @@ export default function CapturaSelfie({ onConfirmar, onCancelar }: CapturaSelfie
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [camera, setCamera] = useState<Camera>('user');
   const [erro, setErro] = useState<string | null>(null);
@@ -89,9 +90,15 @@ export default function CapturaSelfie({ onConfirmar, onCancelar }: CapturaSelfie
 
   if (foto) {
     return (
-      <div className="fixed inset-0 z-50 bg-black flex flex-col">
+      <div
+        className="fixed inset-0 z-50 bg-black flex flex-col"
+        style={{ height: '100dvh' }}
+      >
         <img src={foto.url} alt="Pré-visualização" className="flex-1 object-contain w-full" />
-        <div className="bg-black p-4 flex flex-col gap-3 pb-8">
+        <div
+          className="bg-black p-4 flex flex-col gap-3"
+          style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom))' }}
+        >
           <p className="text-white text-center text-sm">A foto ficou boa? O rosto e a placa do veículo estão visíveis?</p>
           <div className="flex gap-3">
             <button
@@ -113,7 +120,10 @@ export default function CapturaSelfie({ onConfirmar, onCancelar }: CapturaSelfie
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black flex flex-col">
+    <div
+      className="fixed inset-0 z-50 bg-black flex flex-col"
+      style={{ height: '100dvh' }}
+    >
       <div className="absolute top-4 left-4 right-4 z-10 flex justify-between items-start">
         <button
           onClick={onCancelar}
@@ -168,14 +178,44 @@ export default function CapturaSelfie({ onConfirmar, onCancelar }: CapturaSelfie
         )}
       </div>
 
-      <div className="bg-black p-4 pb-8 flex flex-col items-center gap-3">
+      <div
+        className="bg-black p-4 flex flex-col items-center gap-3"
+        style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom))' }}
+      >
         <p className="text-white/80 text-xs text-center">Boa iluminação · Sem filtros · Placa legível</p>
         <button
           onClick={capturar}
           disabled={carregando || !!erro}
           aria-label="Tirar foto"
-          className="w-20 h-20 rounded-full bg-white border-4 border-white/40 active:scale-95 transition-all disabled:opacity-40"
+          className="w-20 h-20 rounded-full bg-white border-4 border-white/40 active:scale-95 transition-all disabled:opacity-40 flex items-center justify-center shadow-lg ring-4 ring-white/20"
+        >
+          <svg className="w-9 h-9 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M3 7h3l2-3h8l2 3h3a1 1 0 011 1v11a1 1 0 01-1 1H3a1 1 0 01-1-1V8a1 1 0 011-1z" />
+            <circle cx="12" cy="13" r="4" strokeWidth="2" />
+          </svg>
+        </button>
+        <p className="text-white text-xs">Toque para tirar a foto</p>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (!f) return;
+            const url = URL.createObjectURL(f);
+            setFoto({ blob: f, url });
+            pararCamera();
+          }}
         />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          className="text-white/70 text-xs underline mt-1"
+        >
+          Problemas com a câmera? Enviar do dispositivo
+        </button>
       </div>
 
       <canvas ref={canvasRef} className="hidden" />
