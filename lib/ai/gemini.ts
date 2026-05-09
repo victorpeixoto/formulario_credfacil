@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import sharp from 'sharp';
+
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const MODEL = 'gemini-2.5-flash';
@@ -63,6 +63,7 @@ export async function analisarImagemComEspelho(
     const { data, mimeType } = await downloadAsBase64(imageUrl);
 
     const originalBuffer = Buffer.from(data, 'base64');
+    const sharp = (await import('sharp')).default;
     const espelhadaBuffer = await sharp(originalBuffer).flop().toBuffer();
     const espelhadaBase64 = espelhadaBuffer.toString('base64');
 

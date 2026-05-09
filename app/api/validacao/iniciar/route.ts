@@ -278,39 +278,51 @@ async function executarPipeline(
 }
 
 export async function POST(req: NextRequest) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('cf_token')?.value;
-  const payload = token ? verificarJWT(token) : null;
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('cf_token')?.value;
+    const payload = token ? verificarJWT(token) : null;
 
-  if (!payload) {
-    return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+    if (!payload) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+    }
+
+    const body: IniciarBody = await req.json();
+    const { documentos: fileKeys, reenvio = false, tiposReenvio = [] } = body;
+
+    if (!fileKeys || Object.keys(fileKeys).length === 0) {
+      return NextResponse.json({ error: 'Nenhum documento informado' }, { status: 400 });
+    }
+
+    const client = await clientPromise;
+    const db = client.db('credfacil');
+
+    await db.collection('conversations').updateOne(
+      { formCode: payload.formCode },
+      { $set: { statusDocumentos: 'PROCESSANDO' } }
+    );
+
+    // Fire and forget
+    executarPipeline(
+      payload.formCode,
+      payload.cpf,
+      fileKeys,
+      reenvio,
+      tiposReenvio
+    ).catch((err) => {
+      console.error('[validacao/iniciar] Erro no pipeline:', err);
+    });
+
+    return NextResponse.json({ status: 'processando' });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[validacao/iniciar] Erro não tratado:', msg);
+    if (err instanceof Error && err.stack) {
+      console.error('[validacao/iniciar] Stack:', err.stack);
+    }
+    return NextResponse.json(
+      { error: 'Erro interno ao iniciar validação', detail: msg },
+      { status: 500 }
+    );
   }
-
-  const body: IniciarBody = await req.json();
-  const { documentos: fileKeys, reenvio = false, tiposReenvio = [] } = body;
-
-  if (!fileKeys || Object.keys(fileKeys).length === 0) {
-    return NextResponse.json({ error: 'Nenhum documento informado' }, { status: 400 });
-  }
-
-  const client = await clientPromise;
-  const db = client.db('credfacil');
-
-  await db.collection('conversations').updateOne(
-    { formCode: payload.formCode },
-    { $set: { statusDocumentos: 'PROCESSANDO' } }
-  );
-
-  // Fire and forget
-  executarPipeline(
-    payload.formCode,
-    payload.cpf,
-    fileKeys,
-    reenvio,
-    tiposReenvio
-  ).catch((err) => {
-    console.error('[validacao/iniciar] Erro no pipeline:', err);
-  });
-
-  return NextResponse.json({ status: 'processando' });
 }

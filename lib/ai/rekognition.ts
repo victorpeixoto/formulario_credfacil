@@ -1,5 +1,4 @@
 import { RekognitionClient, CompareFacesCommand } from '@aws-sdk/client-rekognition';
-import { pdf } from 'pdf-to-img';
 
 const client = new RekognitionClient({
   region: process.env.AWS_REGION || 'us-east-1',
@@ -10,6 +9,9 @@ const client = new RekognitionClient({
 });
 
 async function pdfParaPng(buffer: Buffer): Promise<Uint8Array> {
+  // Import dinâmico — evita quebrar o módulo no Vercel serverless
+  // onde o pdf-to-img (binário nativo) pode não estar disponível
+  const { pdf } = await import('pdf-to-img');
   const pages = await pdf(buffer, { scale: 2 });
   for await (const page of pages) {
     return new Uint8Array(page);
