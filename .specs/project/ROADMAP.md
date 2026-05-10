@@ -79,12 +79,12 @@
 - /api/check-cpf com lookup MongoDB
 - Redirecionamento para suporte WhatsApp se já cadastrado
 
-**Login do Cliente Existente** - PLANNED
+**Login do Cliente Existente** - COMPLETE
 
-- Gap identificado: candidatos com conta criada eram enviados ao WhatsApp ao clicar "Já sou cliente"
 - /api/check-cpf retorna `temSenha: boolean`
-- Se tem senha → redirect para /login?cpf={cpf} (pré-preenchido)
+- Se tem senha → redirect para /login (CPF pré-preenchido via resolve-cpf)
 - Se sem senha → redirect para /aprovado (criar senha)
+- Login pós-autenticação: `temDocumentos` flag decide entre /documentos e /status (portal)
 - WhatsApp de suporte reservado apenas para casos de fallback
 
 **Alertas de Operação** - COMPLETE
@@ -96,47 +96,58 @@
 ## Milestone 4 — Validação de Documentos com IA
 
 **Goal:** Automatizar validação de documentos com IA, substituindo o envio manual via WhatsApp
-**Status:** Planning complete — Ready for implementation
+**Status:** In Progress — Branch `feature/validacao-documentos-ia`, aguardando testes E2E + merge
 
 ### Features
 
-**Migração para VPS (Coolify)** - PLANNED
+**Migração para VPS (Coolify)** - COMPLETE
 
 - Dockerfile de produção (Node 20 Alpine, standalone output)
 - Novo serviço no Coolify com SSL via Traefik
 - MongoDB acessado via rede interna Docker
 
-**Autenticação do Candidato** - PLANNED
+**Autenticação do Candidato** - COMPLETE
 
 - Login CPF + senha (bcrypt + JWT httpOnly)
 - Auto-login após cadastro de senha no /aprovado
 - Recuperação de senha via email
 - Middleware protegendo rotas /(auth)/*
+- Rate limit 5 tentativas, bloqueio 15min
 
-**Upload de Documentos** - PLANNED
+**Upload de Documentos** - COMPLETE
 
 - 5 documentos: CNH, Comprovante, Selfie+Veículo, Vídeo App, Vídeo Veículo
 - Upload direto para Cloudflare R2 via presigned URLs
 - Validação client-side (formato, tamanho)
+- Wizard multi-passo com preview por documento
 
-**Pipeline de Validação com IA** - PLANNED
+**Pipeline de Validação com IA** - COMPLETE
 
 - Gemini Flash: OCR de CNH e comprovante, análise de vídeos, extração de placa
 - AWS Rekognition: comparação facial (selfie vs CNH)
-- Cruzamento de dados: nome, CPF, placa, biometria
+- Cruzamento de dados: nome, CPF, placa, biometria (Levenshtein)
 - Orquestração via Promise.allSettled na aplicação
 
-**Progresso em Tempo Real** - PLANNED
+**Progresso em Tempo Real** - COMPLETE
 
 - Server-Sent Events (SSE) na página /status
 - Atualização visual documento a documento
 - Resultado final: aprovado, pendência ou análise manual
 
-**Reenvio de Documentos** - PLANNED
+**Reenvio de Documentos** - COMPLETE
 
-- Reenvio individual de documento rejeitado
+- Reenvio individual de documento rejeitado (sem wizard completo)
 - Limite de 3 tentativas por documento
 - Escalação para analista via Telegram após 3 falhas
+
+**Portal do Cliente** - COMPLETE
+
+- /status reescrita como portal com saudação personalizada e barra de progresso
+- Cards de documentos com status visual, motivo de rejeição e ação de reenvio inline
+- GET /api/candidato — dados do candidato autenticado (nome, CPF mascarado, status)
+- /documentos protegida: redireciona para portal quando já tem documentos enviados
+- Login redireciona para /status (portal) quando candidato já tem documentos
+- Seção de contato WhatsApp exibida apenas quando todos os documentos aprovados
 
 ---
 

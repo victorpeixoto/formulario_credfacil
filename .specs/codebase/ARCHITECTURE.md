@@ -10,17 +10,30 @@ Candidato (browser)
     ▼
 Vercel Edge / CDN
     │
-    ├── app/page.tsx            ← Client Component (formulário multi-card)
-    ├── app/aprovado/page.tsx   ← Client Component (tela sucesso)
-    ├── app/reprovado/page.tsx  ← Server Component (tela rejeição)
-    ├── app/suporte-whatsapp/   ← Client Component (redirect)
+    ├── app/(public)/page.tsx        ← Formulário multi-card (Client Component)
+    ├── app/(public)/aprovado/       ← Cadastro de senha pós-aprovação
+    ├── app/(public)/login/          ← Login CPF + senha
+    ├── app/(public)/reprovado/      ← Tela de rejeição
+    ├── app/(public)/redefinir-senha/ ← Redefinição via token email
+    │
+    ├── app/(auth)/ [JWT protegido pelo middleware]
+    │   ├── documentos/page.tsx       ← Wizard de upload (primeiro envio)
+    │   └── status/page.tsx           ← Portal do cliente (SSE + reenvio inline)
     │
     └── app/api/
-        ├── submit/route.ts     ← API Route (Node.js edge-compatible)
-        ├── check-cpf/route.ts  ← API Route
-        └── meta-capi/route.ts  ← API Route (proxy CAPI)
+        ├── submit/route.ts           ← Formulário original
+        ├── check-cpf/route.ts        ← Verifica CPF existente
+        ├── candidato/route.ts        ← GET dados do candidato para portal
+        ├── auth/{login,registrar,recuperar,redefinir}
+        ├── upload/presigned-url/     ← Gera URL de upload R2
+        ├── validacao/{iniciar,status} ← Pipeline IA + SSE
+        ├── whatsapp-link/            ← Rodízio de números WA
+        └── meta-capi/route.ts        ← Proxy CAPI
                 │
                 ├── MongoDB Atlas (collection: conversations)
+                ├── Cloudflare R2 (documentos via presigned URLs)
+                ├── Google Gemini Flash (OCR + análise de vídeo)
+                ├── AWS Rekognition (comparação facial)
                 ├── Chatwoot API (listar inboxes disponíveis)
                 ├── Meta Graph API (verificar status número WA)
                 └── Telegram Bot API (alertas de falha)
@@ -112,7 +125,39 @@ Campos principais:
 **Approach:** Feature-based + Layer-based híbrido
 
 **Module boundaries:**
-- `components/cards/` — UI pura, sem lógica de negócio
+- `components/cards/` — UI pura do formulário, sem lógica de negócio
+- `components/captura/` — Componentes de captura de documentos (CapturaDocumento, CapturaSelfie, CapturaVideo)
+- `components/portal/` — Componentes do portal do cliente (CardDocumento, ReenvioDocumento, SecaoContato)
 - `lib/` — serviços e integrações, sem dependência de React
+- `lib/ai/` — cliente Gemini, Rekognition, funções de validação individuais e cruzamento
 - `app/api/` — handlers HTTP, orquestram lib/
-- `types/` — contratos compartilhados entre layers
+- `types/` — contratos compartilhados entre layers (documentos.ts, auth.ts)
+
+---
+
+## Portal do Cliente
+
+### Fluxo Pós-Primeiro Envio
+
+**Location:** `app/(auth)/status/page.tsx` + `components/portal/`
+**Purpose:** Interface central para o candidato acompanhar e gerenciar documentos após o envio inicial
+**Implementation:** Combina SSE (atualizações em tempo real) com cards de status interativos. Reenvio de documento rejeitado é feito inline sem sair da página.
+
+```
+Portal (/status)
+    ├── GET /api/candidato         ← Nome, CPF mascarado, status dos 5 documentos
+    ├── EventSource /api/validacao/status ← SSE para atualizações em tempo real
+    ├── CardDocumento ×5            ← Card por documento com badge de status
+    ├── ReenvioDocumento           ← Reativado ao clicar em card rejeitado
+    │   ├── GET /api/upload/presigned-url
+    │   ├── PUT {uploadUrl}           ← Upload direto para R2
+    │   └── POST /api/validacao/iniciar (reenvio: true, tiposReenvio: [tipo])
+    └── SecaoContato               ← Exibida quando statusDocumentos === 'APROVADO'
+        └── POST /api/whatsapp-link   ← Rodízio de número WA
+```
+
+### Proteção de Acesso ao Wizard
+
+- `/documentos` verifica `statusDocumentos` via `/api/candidato` no mount
+- Se `!= 'AGUARDANDO_DOCUMENTOS'` → `router.replace('/status')`
+- Login retorna `temDocumentos: boolean` → frontend decide destino

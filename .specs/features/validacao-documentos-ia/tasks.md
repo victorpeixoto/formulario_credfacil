@@ -906,21 +906,74 @@ CMD ["node", "server.js"]
 
 **Cenários de teste**:
 1. Fluxo feliz: formulário → senha → upload 5 docs válidos → aprovação → WhatsApp
-2. Documento rejeitado: upload com CNH vencida → pendência → reenvio → aprovação
+2. Documento rejeitado: upload com CNH vencida → pendência → reenvio inline no portal → aprovação
 3. 3 tentativas: rejeição 3x → alerta analista → "Em análise"
-4. Login retorno: fechar browser → login → /documentos com estado preservado
+4. Login retorno: fechar browser → login → portal /status (não /documentos)
 5. Recuperação de senha: esqueci → email → redefinir → login
 6. Browser fecha durante validação: reabrir → /status mostra resultado
 7. Validações client-side: arquivo muito grande, formato errado
+8. Camera celular: reenvio de CNH e comprovante via câmera nativa no celular
 
 **Done when**:
-- [x] Todos os 7 cenários passam
-- [x] Nenhum erro no console do servidor
-- [x] Dados corretos no MongoDB após cada cenário
+- [ ] Todos os 8 cenários passam no celular real (não simulador)
+- [ ] Nenhum erro no console do servidor
+- [ ] Dados corretos no MongoDB após cada cenário
 
-**Verify**: Executar cada cenário manualmente, documentar resultado
+**Verify**: Executar cada cenário manualmente via Vercel Preview no celular
 
 ---
+
+### T34: Portal do Cliente (reenvio individual inline)
+
+**What**: Transformar /status de página de progresso em portal central do candidato com reenvio granular
+**Where**: `app/(auth)/status/page.tsx`, `components/portal/*`, `app/api/candidato/route.ts`
+**Depends on**: T28, T31
+
+**Implementado em**: commit `afeabc8` (2026-05-10)
+
+**O que foi feito**:
+- `GET /api/candidato` — retorna nome, CPF mascarado, statusDocumentos, documentos com status/motivo/tentativas
+- `components/portal/card-documento.tsx` — card visual com badge (Aprovado/Rejeitado/Analisando/Erro), motivo de rejeição, animação pulse
+- `components/portal/reenvio-documento.tsx` — reutiliza CapturaDocumento/CapturaSelfie/CapturaVideo, faz upload + chama iniciar com reenvio:true
+- `components/portal/secao-contato.tsx` — seção WhatsApp exibida apenas quando statusDocumentos === 'APROVADO'
+- `/status` reescrita: saudação personalizada, barra de progresso, 5 cards, SSE em tempo real, reenvio inline
+
+**Done when**:
+- [x] GET /api/candidato retorna dados corretos do MongoDB
+- [x] Cards exibem status correto para cada documento
+- [x] Reenvio inline funciona sem sair da página
+- [x] SSE atualiza cards em tempo real durante reprocessamento
+- [x] Seção WhatsApp aparece apenas quando todos aprovados
+- [x] TypeScript compila sem erros
+
+**Verify**: Acessar /status com documentos em diferentes estados e verificar UI
+
+---
+
+### T35: Redirect inteligente (login + wizard)
+
+**What**: Garantir que candidatos com documentos enviados sejam sempre redirecionados para o portal
+**Where**: `app/api/auth/login/route.ts`, `app/(public)/login/page.tsx`, `app/(auth)/documentos/page.tsx`
+**Depends on**: T34
+
+**Implementado em**: commit `afeabc8` (2026-05-10)
+
+**O que foi feito**:
+- `POST /api/auth/login` — retorna `temDocumentos: boolean` (true quando statusDocumentos != 'AGUARDANDO_DOCUMENTOS')
+- `app/(public)/login/page.tsx` — redireciona para /status quando temDocumentos, para /documentos caso contrário
+- `app/(auth)/documentos/page.tsx` — verifica statusDocumentos via /api/candidato no mount; redireciona para /status se não está aguardando
+
+**Done when**:
+- [x] Login redireciona para portal quando candidato já tem documentos
+- [x] Login redireciona para wizard quando candidato é novo
+- [x] Acesso direto a /documentos por candidato com docs enviados → redirect /status
+- [x] Primeiro acesso a /documentos funciona normalmente
+- [x] TypeScript compila sem erros
+
+**Verify**: Login com contas em diferentes estados, verificar destino do redirect
+
+---
+
 
 ## Parallel Execution Map
 
@@ -972,7 +1025,9 @@ Phase 6 (Sequential):
   T28 → T30 (Dockerfile)
   T30 → T31 (reenvio)
   T31 → T32 (alerta analista)
-  T32 → T33 (testes E2E)
+  T32 → T34 (portal do cliente)
+  T34 → T35 (redirect inteligente)
+  T35 → T33 (testes E2E)
 ```
 
 ---
@@ -1000,4 +1055,6 @@ Phase 6 (Sequential):
 | T30: Dockerfile | 1 file + config | ✅ Granular |
 | T31: Reenvio | Modificação em 2 files | ⚠️ OK (feature coesa) |
 | T32: Alerta | Modificação em 1 file | ✅ Granular |
-| T33: Testes E2E | Manual | ✅ Granular |
+| T33: Testes E2E | Manual — celular real | ⏳ Pendente |
+| T34: Portal do Cliente | 4 files novos + 1 reescrito | ✅ COMPLETE |
+| T35: Redirect inteligente | 3 files modificados | ✅ COMPLETE |

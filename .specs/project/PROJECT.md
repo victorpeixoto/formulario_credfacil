@@ -28,15 +28,26 @@
 - Persistência de rascunho via localStorage
 - Rodízio de números WhatsApp via Chatwoot + Meta Graph API
 - Rastreamento dual (Pixel + CAPI) para Meta Ads
-- Fluxo de CPF existente (redirect para suporte)
+- Fluxo de CPF existente (redirect para suporte ou login)
 - Alertas Telegram em caso de falha de números
+- Autenticação de candidatos: login CPF + senha, JWT httpOnly, recuperação por email
+- Upload de 5 documentos via Cloudflare R2 (presigned URLs)
+- Pipeline de validação com IA: Gemini Flash (OCR) + AWS Rekognition (biometria)
+- Progresso em tempo real via SSE
+- Portal do cliente (/status): status visual por documento, reenvio individual inline, seção WhatsApp pós-aprovação
+- Redirect inteligente: login e /documentos redirecionam para portal quando candidato já tem documentos
 
-**Explicitamente fora de escopo:**
-- Upload de documentos no formulário
-- Envio automático de mídias via API WhatsApp
-- Login ou área do candidato
-- Continuidade entre dispositivos diferentes
+**Explicitamente fora de escopo (v1):**
 - Painel de gestão (está em projeto separado `painel-credfacil`)
+- Notificações push/email de mudanças de status
+- Dashboard de conversão e observabilidade
+- Testes automatizados (unit, integration, E2E)
+- Integração direta com Chatwoot para criar contato
+
+**v2 planejado (Milestone 5):**
+- Testes automatizados (Jest, Playwright)
+- Área do candidato expandida (/perfil, histórico)
+- Observabilidade (logs estruturados, dashboard de conversão)
 
 ## Constraints
 
