@@ -69,7 +69,10 @@ export async function POST(req: NextRequest) {
 
   const token = gerarJWT(cpf, candidato.formCode ?? candidato.contactId);
 
-  const response = NextResponse.json({ success: true, formCode: candidato.formCode });
+  // Verificar se já tem documentos para direcionar ao portal
+  const temDocumentos = candidato.statusDocumentos && candidato.statusDocumentos !== 'AGUARDANDO_DOCUMENTOS';
+
+  const response = NextResponse.json({ success: true, formCode: candidato.formCode, temDocumentos: !!temDocumentos });
   response.cookies.set('cf_token', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',

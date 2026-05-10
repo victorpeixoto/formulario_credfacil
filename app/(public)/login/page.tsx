@@ -59,7 +59,7 @@ function ConteudoLogin() {
         return;
       }
 
-      router.push(redirect);
+      router.push(data.temDocumentos ? '/status' : redirect);
     } catch {
       setErro('Erro de conexão. Tente novamente.');
     } finally {

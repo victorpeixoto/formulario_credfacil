@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import type { TipoDocumento } from '@/types/documentos';
 import PassoWizard from '@/components/captura/passo-wizard';
@@ -44,6 +44,7 @@ const TITULOS: Record<TipoDocumento, { titulo: string; subtitulo: string }> = {
 
 export default function PageDocumentos() {
   const router = useRouter();
+  const [verificandoRedirect, setVerificandoRedirect] = useState(true);
   const [passo, setPasso] = useState(0); // 0..4 = capturas, 5 = resumo
   const [enviados, setEnviados] = useState<Record<TipoDocumento, ItemEnviado | undefined>>({
     cnh: undefined,
@@ -56,8 +57,31 @@ export default function PageDocumentos() {
   const [enviandoPipeline, setEnviandoPipeline] = useState(false);
   const [erroUpload, setErroUpload] = useState<string | null>(null);
 
+  // Verificar se já tem documentos — se sim, redirecionar para o portal
+  useEffect(() => {
+    fetch('/api/candidato')
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data && data.statusDocumentos !== 'AGUARDANDO_DOCUMENTOS') {
+          router.replace('/status');
+          return;
+        }
+        setVerificandoRedirect(false);
+      })
+      .catch(() => setVerificandoRedirect(false));
+  }, [router]);
+
   const tipoAtual = ORDEM[passo];
   const todosCompletos = ORDEM.every((t) => enviados[t]?.fileKey);
+
+  // Mostrar loading enquanto verifica redirect
+  if (verificandoRedirect) {
+    return (
+      <main className="min-h-dvh bg-white flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-gray-200 border-t-green-500 animate-spin" />
+      </main>
+    );
+  }
 
   const fazerUpload = async (tipo: TipoDocumento, file: File, previewUrl?: string) => {
     setErroUpload(null);
