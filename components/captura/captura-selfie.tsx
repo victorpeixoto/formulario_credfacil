@@ -92,7 +92,7 @@ export default function CapturaSelfie({ onConfirmar, onCancelar }: CapturaSelfie
     return (
       <div
         className="fixed inset-0 z-50 bg-black flex flex-col"
-        style={{ height: '100dvh' }}
+        style={{ height: '100svh' }}
       >
         <img src={foto.url} alt="Pré-visualização" className="flex-1 object-contain w-full" />
         <div

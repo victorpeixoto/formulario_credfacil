@@ -92,8 +92,13 @@ export default function CapturaVideo({ tipo, onConfirmar, onCancelar }: CapturaV
 
   if (arquivo) {
     return (
-      <div className="flex flex-col gap-4">
-        <video src={arquivo.url} controls playsInline className="w-full rounded-2xl bg-black aspect-video" />
+      <div className="flex flex-col gap-4 flex-1">
+        <video
+          src={arquivo.url}
+          controls
+          playsInline
+          className="w-full max-h-[55vh] object-contain rounded-2xl bg-black"
+        />
         <p className="text-gray-600 text-sm text-center">Confira se o vídeo atende todos os requisitos.</p>
         <div className="flex flex-col gap-3">
           <button

@@ -55,9 +55,13 @@ export default function CapturaDocumento({ tipo, onConfirmar, onCancelar }: Capt
 
   if (arquivo) {
     return (
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4 flex-1">
         {arquivo.url ? (
-          <img src={arquivo.url} alt="Pré-visualização" className="w-full rounded-2xl border border-gray-200" />
+          <img
+            src={arquivo.url}
+            alt="Pré-visualização"
+            className="w-full max-h-[55vh] object-contain rounded-2xl border border-gray-200 bg-gray-50"
+          />
         ) : (
           <div className="bg-gray-50 border border-gray-200 rounded-2xl p-8 flex flex-col items-center gap-2">
             <svg className="w-12 h-12 text-gray-400" fill="none" viewBox="0 0 24 24">
