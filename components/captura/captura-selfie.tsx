@@ -94,9 +94,15 @@ export default function CapturaSelfie({ onConfirmar, onCancelar }: CapturaSelfie
         className="fixed inset-0 z-50 bg-black flex flex-col"
         style={{ height: '100svh' }}
       >
-        <img src={foto.url} alt="Pré-visualização" className="flex-1 object-contain w-full" />
+        <div className="flex-1 min-h-0 overflow-hidden flex items-center justify-center">
+          <img
+            src={foto.url}
+            alt="Pré-visualização"
+            className="max-w-full max-h-full object-contain"
+          />
+        </div>
         <div
-          className="bg-black p-4 flex flex-col gap-3"
+          className="bg-black p-4 flex flex-col gap-3 shrink-0"
           style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom))' }}
         >
           <p className="text-white text-center text-sm">A foto ficou boa? O rosto e a placa do veículo estão visíveis?</p>
@@ -145,7 +151,7 @@ export default function CapturaSelfie({ onConfirmar, onCancelar }: CapturaSelfie
         </button>
       </div>
 
-      <div className="flex-1 relative overflow-hidden">
+      <div className="flex-1 min-h-0 relative overflow-hidden">
         {erro ? (
           <div className="absolute inset-0 flex items-center justify-center p-6 text-center">
             <p className="text-white text-sm">{erro}</p>
@@ -179,7 +185,7 @@ export default function CapturaSelfie({ onConfirmar, onCancelar }: CapturaSelfie
       </div>
 
       <div
-        className="bg-black p-4 flex flex-col items-center gap-3"
+        className="bg-black p-4 flex flex-col items-center gap-3 shrink-0"
         style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom))' }}
       >
         <p className="text-white/80 text-xs text-center">Boa iluminação · Sem filtros · Placa legível</p>
