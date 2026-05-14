@@ -22,7 +22,7 @@ export default function PassoWizard({
   const progresso = (passoAtual / totalPassos) * 100;
 
   return (
-    <main className="min-h-dvh bg-white flex flex-col px-6 py-6 max-w-md mx-auto gap-5">
+    <main className="flex-1 w-full bg-white flex flex-col px-6 py-6 max-w-md mx-auto gap-5">
       <div className="flex items-center gap-3">
         {onVoltar && (
           <button

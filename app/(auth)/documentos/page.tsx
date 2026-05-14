@@ -77,7 +77,7 @@ export default function PageDocumentos() {
   // Mostrar loading enquanto verifica redirect
   if (verificandoRedirect) {
     return (
-      <main className="min-h-dvh bg-white flex items-center justify-center">
+      <main className="flex-1 w-full bg-white flex items-center justify-center">
         <div className="w-8 h-8 rounded-full border-2 border-gray-200 border-t-green-500 animate-spin" />
       </main>
     );
