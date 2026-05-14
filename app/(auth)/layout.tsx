@@ -1,3 +1,10 @@
+import NavHeader from '@/components/portal/nav-header';
+
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+  return (
+    <div className="min-h-dvh bg-white flex flex-col">
+      <NavHeader />
+      <div className="flex-1">{children}</div>
+    </div>
+  );
 }

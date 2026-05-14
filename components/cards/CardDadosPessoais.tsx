@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import BotaoAvancar from '@/components/BotaoAvancar';
 import { validarCPF, formatarCPF, validarEmail, validarNomeCompleto } from '@/lib/validators';
+import { buscarCep as buscarCepLib } from '@/lib/cep';
 
 interface Props {
   nomeCompleto: string;
@@ -35,30 +36,23 @@ export default function CardDadosPessoais({
   }
 
   async function buscarCep(valor: string) {
-    const apenasNumeros = valor.replace(/\D/g, '');
-    if (apenasNumeros.length !== 8) return;
+    if (valor.replace(/\D/g, '').length !== 8) return;
 
     setBuscandoCep(true);
     setErroCep('');
-    try {
-      const res = await fetch(`https://viacep.com.br/ws/${apenasNumeros}/json/`);
-      const data = await res.json();
-      if (data.erro) {
-        setErroCep('CEP não encontrado.');
-        return;
-      }
-      onChange('cep', apenasNumeros);
-      onChange('logradouro', data.logradouro || '');
-      onChange('bairro', data.bairro || '');
-      onChange('cidade', data.localidade || '');
-      onChange('estadoUF', data.uf || '');
-      if (!data.logradouro) {
-        setLogradouroManual(true);
-      }
-    } catch {
-      setErroCep('Erro ao buscar CEP. Tente novamente.');
-    } finally {
-      setBuscandoCep(false);
+    const r = await buscarCepLib(valor);
+    setBuscandoCep(false);
+    if (!r.ok) {
+      setErroCep(r.erro);
+      return;
+    }
+    onChange('cep', r.endereco.cep);
+    onChange('logradouro', r.endereco.logradouro);
+    onChange('bairro', r.endereco.bairro);
+    onChange('cidade', r.endereco.cidade);
+    onChange('estadoUF', r.endereco.estadoUF);
+    if (!r.endereco.encontrado) {
+      setLogradouroManual(true);
     }
   }
 
