@@ -48,7 +48,8 @@ const TAMANHO_MAX_MB = 50;
 
 export default function CapturaVideo({ tipo, onConfirmar, onCancelar }: CapturaVideoProps) {
   const config = CHECKLISTS[tipo];
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputCameraRef = useRef<HTMLInputElement>(null);
+  const inputGaleriaRef = useRef<HTMLInputElement>(null);
   const [checklistOk, setChecklistOk] = useState(false);
   const [arquivo, setArquivo] = useState<{ file: File; url: string } | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -140,7 +141,7 @@ export default function CapturaVideo({ tipo, onConfirmar, onCancelar }: CapturaV
       {erro && <p className="text-red-500 text-sm">{erro}</p>}
 
       <input
-        ref={inputRef}
+        ref={inputCameraRef}
         type="file"
         accept="video/*"
         capture="environment"
@@ -150,14 +151,38 @@ export default function CapturaVideo({ tipo, onConfirmar, onCancelar }: CapturaV
           if (file) handleArquivo(file);
         }}
       />
+      <input
+        ref={inputGaleriaRef}
+        type="file"
+        accept="video/*"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleArquivo(file);
+        }}
+      />
 
       <div className="flex flex-col gap-3 mt-auto">
         <button
-          onClick={() => inputRef.current?.click()}
+          onClick={() => inputCameraRef.current?.click()}
           disabled={!checklistOk}
-          className="w-full py-4 rounded-2xl bg-green-500 hover:bg-green-600 active:scale-95 text-white font-semibold text-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-full py-4 rounded-2xl bg-green-500 hover:bg-green-600 active:scale-95 text-white font-semibold text-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
-          {checklistOk ? 'Selecionar vídeo' : 'Marque todos os itens acima'}
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+          </svg>
+          {checklistOk ? 'Gravar vídeo agora' : 'Marque todos os itens acima'}
+        </button>
+        <button
+          onClick={() => inputGaleriaRef.current?.click()}
+          disabled={!checklistOk}
+          className="w-full py-3 rounded-2xl border border-gray-200 text-gray-700 font-medium text-sm hover:bg-gray-50 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M4 7a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V7z" />
+            <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M4 17l4-4a2 2 0 012.8 0L14 16m-2-3l2-2a2 2 0 012.8 0L20 14" />
+          </svg>
+          Escolher da galeria
         </button>
         <button
           onClick={onCancelar}

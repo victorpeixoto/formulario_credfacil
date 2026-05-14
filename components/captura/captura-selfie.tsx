@@ -189,24 +189,11 @@ export default function CapturaSelfie({ onConfirmar, onCancelar }: CapturaSelfie
         style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom))' }}
       >
         <p className="text-white/80 text-xs text-center">Boa iluminação · Sem filtros · Placa legível</p>
-        <button
-          onClick={capturar}
-          disabled={carregando || !!erro}
-          aria-label="Tirar foto"
-          className="w-20 h-20 rounded-full bg-white border-4 border-white/40 active:scale-95 transition-all disabled:opacity-40 flex items-center justify-center shadow-lg ring-4 ring-white/20"
-        >
-          <svg className="w-9 h-9 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M3 7h3l2-3h8l2 3h3a1 1 0 011 1v11a1 1 0 01-1 1H3a1 1 0 01-1-1V8a1 1 0 011-1z" />
-            <circle cx="12" cy="13" r="4" strokeWidth="2" />
-          </svg>
-        </button>
-        <p className="text-white text-xs">Toque para tirar a foto</p>
 
         <input
           ref={fileInputRef}
           type="file"
           accept="image/*"
-          capture="environment"
           className="hidden"
           onChange={(e) => {
             const f = e.target.files?.[0];
@@ -216,12 +203,34 @@ export default function CapturaSelfie({ onConfirmar, onCancelar }: CapturaSelfie
             pararCamera();
           }}
         />
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="text-white/70 text-xs underline mt-1"
-        >
-          Problemas com a câmera? Enviar do dispositivo
-        </button>
+
+        <div className="flex items-center justify-center gap-8 w-full">
+          <div className="w-14" aria-hidden />
+          <button
+            onClick={capturar}
+            disabled={carregando || !!erro}
+            aria-label="Tirar foto"
+            className="w-20 h-20 rounded-full bg-white border-4 border-white/40 active:scale-95 transition-all disabled:opacity-40 flex items-center justify-center shadow-lg ring-4 ring-white/20"
+          >
+            <svg className="w-9 h-9 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M3 7h3l2-3h8l2 3h3a1 1 0 011 1v11a1 1 0 01-1 1H3a1 1 0 01-1-1V8a1 1 0 011-1z" />
+              <circle cx="12" cy="13" r="4" strokeWidth="2" />
+            </svg>
+          </button>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            aria-label="Escolher da galeria"
+            className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur border border-white/20 active:scale-95 transition-all flex flex-col items-center justify-center text-white"
+          >
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M4 7a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V7z" />
+              <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M4 17l4-4a2 2 0 012.8 0L14 16m-2-3l2-2a2 2 0 012.8 0L20 14" />
+              <circle cx="9" cy="10" r="1.2" fill="currentColor" />
+            </svg>
+            <span className="text-[10px] mt-0.5">Galeria</span>
+          </button>
+        </div>
+        <p className="text-white text-xs">Toque para tirar a foto ou escolher da galeria</p>
       </div>
 
       <canvas ref={canvasRef} className="hidden" />
