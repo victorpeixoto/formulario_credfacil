@@ -141,5 +141,11 @@ export function cruzarDados(resultados: ResultadosTodos, cadastro: DadosCadastro
     biometriaConfere = biometria.similarity >= 90;
   }
 
-  return { nomeCadastroConfere, nomeConfere, placaConfere, cpfConfere, enderecoConfere, biometriaConfere, biometriaScore };
+  // Comprovante em nome de terceiro
+  let comprovanteNomeDivergente: boolean | null = null;
+  if (comp?.nome) {
+    comprovanteNomeDivergente = calcularSimilaridade(comp.nome, cadastro.nomeCompleto) < 85;
+  }
+
+  return { nomeCadastroConfere, nomeConfere, placaConfere, cpfConfere, enderecoConfere, biometriaConfere, biometriaScore, comprovanteNomeDivergente };
 }

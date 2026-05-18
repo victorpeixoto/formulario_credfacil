@@ -1,4 +1,5 @@
 import { analisarImagem } from '../gemini';
+import { calcularSimilaridade } from '../cruzamento';
 import type { ResultadoComprovante } from '@/types/documentos';
 
 const PROMPT = `Analise este comprovante de residência brasileiro e extraia:
@@ -26,15 +27,18 @@ Responda APENAS em JSON:
 
 const PRAZO_DIAS = 90;
 
-export async function validarComprovante(imageUrl: string): Promise<{
+export async function validarComprovante(imageUrl: string, nomeCadastro: string): Promise<{
   aprovado: boolean;
   motivo: string | null;
   dadosExtraidos: ResultadoComprovante;
+  nomeDivergente: boolean;
 }> {
   const dados = (await analisarImagem(imageUrl, PROMPT)) as unknown as ResultadoComprovante;
 
+  const nomeDivergente = dados.nome ? calcularSimilaridade(dados.nome, nomeCadastro) < 85 : false;
+
   if (!dados.legivel) {
-    return { aprovado: false, motivo: 'Comprovante ilegível ou com cortes', dadosExtraidos: dados };
+    return { aprovado: false, motivo: 'Comprovante ilegível ou com cortes', dadosExtraidos: dados, nomeDivergente };
   }
 
   if (dados.dataEmissao) {
@@ -42,11 +46,11 @@ export async function validarComprovante(imageUrl: string): Promise<{
     const limite = new Date();
     limite.setDate(limite.getDate() - PRAZO_DIAS);
     if (emissao < limite) {
-      return { aprovado: false, motivo: `Comprovante com mais de ${PRAZO_DIAS} dias`, dadosExtraidos: dados };
+      return { aprovado: false, motivo: `Comprovante com mais de ${PRAZO_DIAS} dias`, dadosExtraidos: dados, nomeDivergente };
     }
   } else {
-    return { aprovado: false, motivo: 'Data de emissão não identificada', dadosExtraidos: dados };
+    return { aprovado: false, motivo: 'Data de emissão não identificada', dadosExtraidos: dados, nomeDivergente };
   }
 
-  return { aprovado: true, motivo: null, dadosExtraidos: dados };
+  return { aprovado: true, motivo: null, dadosExtraidos: dados, nomeDivergente };
 }

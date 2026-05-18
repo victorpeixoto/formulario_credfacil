@@ -1058,3 +1058,241 @@ Phase 6 (Sequential):
 | T33: Testes E2E | Manual — celular real | ⏳ Pendente |
 | T34: Portal do Cliente | 4 files novos + 1 reescrito | ✅ COMPLETE |
 | T35: Redirect inteligente | 3 files modificados | ✅ COMPLETE |
+| T36: Tipos — `comprovanteNomeDivergente` + campos vídeo app | 1 arquivo, 2 interfaces | ✅ Granular |
+| T37: `comprovante.ts` — retornar `nomeDivergente` | 1 função, 1 arquivo | ✅ Granular |
+| T38: `video-app.ts` — prompt + regras de faturamento | 1 função, 1 arquivo | ✅ Granular |
+| T39: `cruzamento.ts` — calcular `comprovanteNomeDivergente` | 1 função, 1 arquivo | ✅ Granular |
+| T40: `iniciar/route.ts` — fluxo comprovante de terceiro | 1 arquivo, 2 blocos coesos | ⚠️ OK |
+| T41: `status/page.tsx` — mensagem contextual | 1 componente, 1 condição | ✅ Granular |
+
+---
+
+## Refatoração: Consolidação validacao-documentos-ia (spec 2026-05-18)
+
+Tasks T36–T41 implementam os gaps G1–G6 identificados no spec. As tasks T1–T35 são o histórico de criação da feature — não modificar.
+
+### Execution Plan (T36–T41)
+
+```
+Phase 1 (Sequential):
+  T36
+
+Phase 2 (Parallel — após T36):
+  T36 complete, then:
+    ├── T37 [P]
+    ├── T38 [P]
+    └── T39 [P]
+
+Phase 3 (Sequential — após Phase 2):
+  T37 + T39 complete → T40
+  T40 complete       → T41
+```
+
+---
+
+### T36: Atualizar tipos em `types/documentos.ts`
+
+**What**: Adicionar `comprovanteNomeDivergente` em `ValidacaoIA` e os campos `ganhosMensais`, `formatoGanhos` e `fotoPerfilVisivel` em `ResultadoVideoApp`.  
+**Where**: `types/documentos.ts`  
+**Depends on**: Nenhuma  
+**Reuses**: Tipos existentes no mesmo arquivo
+
+**Mudanças**:
+```ts
+// ValidacaoIA — adicionar:
+comprovanteNomeDivergente: boolean | null;
+
+// ResultadoVideoApp — adicionar:
+ganhosMensais: Array<{ mes: string; valor: number }> | null;
+formatoGanhos: 'mensal' | 'invalido' | 'nao_identificado' | null;
+fotoPerfilVisivel: boolean | null;
+```
+
+**Done when**:
+- [ ] `ValidacaoIA` possui `comprovanteNomeDivergente: boolean | null`
+- [ ] `ResultadoVideoApp` possui `ganhosMensais`, `formatoGanhos` e `fotoPerfilVisivel`
+- [ ] Zero erros TypeScript: `npx tsc --noEmit`
+
+**Verify**: `npx tsc --noEmit`
+
+---
+
+### T37: Atualizar `validarComprovante` para retornar `nomeDivergente` [P]
+
+**What**: Adicionar parâmetro `nomeCadastro: string` e campo `nomeDivergente: boolean` ao retorno. A função **não** rejeita por nome divergente — apenas sinaliza.  
+**Where**: `lib/ai/validacoes/comprovante.ts`  
+**Depends on**: T36  
+**Reuses**: `calcularSimilaridade` de `../cruzamento`; `analisarImagem` de `../gemini`
+
+**Mudanças**:
+- Adicionar segundo parâmetro: `nomeCadastro: string`
+- Após extração, calcular: `nomeDivergente = calcularSimilaridade(dados.nome, nomeCadastro) < 85`
+- Incluir `nomeDivergente` no objeto retornado
+- Não reprovar por nome divergente (manter apenas rejeição por prazo e legibilidade)
+
+**Done when**:
+- [ ] Assinatura: `validarComprovante(imageUrl: string, nomeCadastro: string)`
+- [ ] Retorno inclui `nomeDivergente: boolean`
+- [ ] Comprovante com nome de terceiro → `aprovado: true`, `nomeDivergente: true` (quando prazo e legibilidade ok)
+- [ ] Comprovante com nome correto → `nomeDivergente: false`
+- [ ] Zero erros TypeScript: `npx tsc --noEmit`
+
+**Verify**: `npx tsc --noEmit`
+
+---
+
+### T38: Atualizar `validarVideoApp` — prompt + regras de faturamento [P]
+
+**What**: Expandir prompt Gemini com 3 novos campos e adicionar regras de validação de faturamento mínimo e formato proibido.  
+**Where**: `lib/ai/validacoes/video-app.ts`  
+**Depends on**: T36  
+**Reuses**: `analisarVideo` de `../gemini`; prompt existente (expandir, não substituir)
+
+**Adições ao prompt** (após item 7):
+```
+8. O vídeo mostra os ganhos em formato MENSAL (mês a mês)? Ou apenas diário/semanal/total?
+9. Extraia os ganhos mês a mês dos últimos 6 meses: [{"mes": "YYYY-MM", "valor": 3800}, ...].
+   Se ganhos estiverem em formato diário, semanal ou apenas total: retorne formatoGanhos = "invalido".
+   Se não identificado: retorne formatoGanhos = "nao_identificado".
+10. A foto do perfil do candidato aparece visível no vídeo?
+```
+
+**Adições ao JSON do prompt**:
+```json
+"ganhosMensais": [{"mes": "YYYY-MM", "valor": 3800}],
+"formatoGanhos": "mensal",
+"fotoPerfilVisivel": true
+```
+
+**Regras de validação** (adicionar em `validarVideoApp` após verificação de `temCortes`):
+```
+SE formatoGanhos === 'invalido':
+  aprovado = false
+  motivo = 'Ganhos não estão no formato mensal. Mostre mês a mês — não envie ganhos diários ou semanais.'
+
+SE ganhosMensais !== null:
+  SE length < 6:
+    aprovado = false
+    motivo = 'Vídeo não mostra os ganhos dos últimos 6 meses completos.'
+  SENÃO SE algum mês com valor < 3500:
+    aprovado = false
+    motivo = 'Faturamento mensal abaixo de R$ 3.500 em um ou mais dos últimos 6 meses.'
+```
+
+**Done when**:
+- [ ] Prompt inclui os 3 novos campos no JSON de resposta
+- [ ] Rejeita com motivo correto quando `formatoGanhos === 'invalido'`
+- [ ] Rejeita quando menos de 6 meses extraídos
+- [ ] Rejeita quando algum mês < R$ 3.500
+- [ ] Aprova quando 6 meses todos ≥ R$ 3.500
+- [ ] Zero erros TypeScript: `npx tsc --noEmit`
+
+**Verify**: `npx tsc --noEmit`
+
+---
+
+### T39: Atualizar `cruzarDados` para calcular `comprovanteNomeDivergente` [P]
+
+**What**: Adicionar cálculo de `comprovanteNomeDivergente` ao resultado de `cruzarDados`.  
+**Where**: `lib/ai/cruzamento.ts`  
+**Depends on**: T36  
+**Reuses**: `calcularSimilaridade` (já no arquivo); `ResultadoComprovante`
+
+**Mudanças** — no bloco que processa `comp`:
+```ts
+let comprovanteNomeDivergente: boolean | null = null;
+if (comp?.nome) {
+  comprovanteNomeDivergente = calcularSimilaridade(comp.nome, cadastro.nomeCompleto) < 85;
+}
+```
+Incluir `comprovanteNomeDivergente` no objeto retornado por `cruzarDados`.
+
+**Done when**:
+- [ ] `cruzarDados` retorna `comprovanteNomeDivergente: boolean | null`
+- [ ] `true` quando similaridade < 85%
+- [ ] `false` quando similaridade ≥ 85%
+- [ ] `null` quando comprovante não foi enviado
+- [ ] Zero erros TypeScript: `npx tsc --noEmit`
+
+**Verify**: `npx tsc --noEmit`
+
+---
+
+### T40: Atualizar pipeline em `iniciar/route.ts` — fluxo comprovante de terceiro
+
+**What**: Ajustar cruzamento do comprovante para não rejeitar por nome de terceiro (apenas por endereço); propagar `comprovanteNomeDivergente` para `statusDocumentos = 'ANALISE_MANUAL'`.  
+**Where**: `app/api/validacao/iniciar/route.ts`  
+**Depends on**: T37, T39
+
+**Mudanças**:
+
+1. **Chamada de `validarComprovante`** (linha ~82) — passar `nomeCadastro`:
+   ```ts
+   case 'comprovante': tarefas.push(['comprovante', () => validarComprovante(url, cadastro.nomeCompleto)]); break;
+   ```
+
+2. **Bloco de cruzamento do comprovante** (linhas 152–169) — remover rejeição por nome; manter apenas por endereço:
+   - Quando endereço não confere: manter rejeição atual
+   - Quando nome diverge (`resultado.value.nomeDivergente === true`) mas endereço conferiu: **não rejeitar**, salvar documento como `aprovado` com campo auxiliar `nomeDivergente: true` no resultado
+
+3. **Determinação do `statusDocumentos` final** (após `cruzarDados`) — adicionar condição:
+   ```ts
+   if (validacaoIA.comprovanteNomeDivergente === true && !algumRejeitado) {
+     statusDocumentos = 'ANALISE_MANUAL';
+     await sendTelegramAlert(`⚠️ CREDFÁCIL — ANÁLISE MANUAL\n\nCandidato: ${cpf}\nCódigo: ${formCode}\nMotivo: Comprovante em nome de terceiro`);
+   }
+   ```
+
+**Done when**:
+- [ ] Comprovante com nome divergente + endereço correto → `documentos.comprovante.status = 'aprovado'` no DB
+- [ ] `statusDocumentos = 'ANALISE_MANUAL'` quando `comprovanteNomeDivergente === true`
+- [ ] Alerta Telegram enviado com motivo "Comprovante em nome de terceiro"
+- [ ] Comprovante com endereço divergente → continua rejeitando normalmente
+- [ ] Zero erros TypeScript: `npx tsc --noEmit`
+
+**Verify**:
+```bash
+npx tsc --noEmit
+# Teste manual: enviar comprovante com nome ≠ cadastro + endereço correto
+# → DB: documentos.comprovante.status = 'aprovado'
+# → DB: statusDocumentos = 'ANALISE_MANUAL'
+# → Telegram: alerta recebido
+```
+
+---
+
+### T41: Atualizar `status/page.tsx` — mensagem contextual para comprovante de terceiro
+
+**What**: Exibir mensagem orientando o candidato a enviar doc do titular quando `ANALISE_MANUAL` for causado por `comprovanteNomeDivergente`.  
+**Where**: `app/(auth)/status/page.tsx`  
+**Depends on**: T40  
+**Reuses**: Lógica existente de `analiseManual`; evento SSE `concluido` já retorna `validacaoIA`
+
+**Mudanças**:
+- Ler `validacaoIA?.comprovanteNomeDivergente` do estado
+- Quando `statusFinal === 'ANALISE_MANUAL'` E `comprovanteNomeDivergente === true`, exibir bloco antes do botão WhatsApp:
+
+```
+Identificamos que seu comprovante de residência está no nome de outra pessoa.
+Para continuar, envie via WhatsApp um dos documentos abaixo do titular do comprovante:
+• CNH
+• RG
+• Certidão de casamento (se casado(a))
+
+Nossa equipe irá analisar e dar continuidade ao seu processo.
+```
+
+- Para `ANALISE_MANUAL` sem `comprovanteNomeDivergente` (ex.: 3+ tentativas): manter comportamento atual sem a mensagem nova.
+
+**Done when**:
+- [ ] Mensagem aparece quando `comprovanteNomeDivergente === true` + `ANALISE_MANUAL`
+- [ ] Botão WhatsApp permanece visível (comportamento existente para `ANALISE_MANUAL`)
+- [ ] Para `ANALISE_MANUAL` por 3+ tentativas, mensagem nova **não** aparece
+- [ ] Zero erros TypeScript: `npx tsc --noEmit`
+
+**Verify**:
+```bash
+npx tsc --noEmit
+# Teste manual: simular candidato com comprovanteNomeDivergente = true no DB
+# → /status exibe a mensagem + botão WhatsApp
+```

@@ -35,6 +35,7 @@ interface CandidatoDoc {
   estadoUF?: string;
   statusDocumentos?: StatusDocumentos;
   documentos?: Record<string, { status?: string; tentativas?: number; resultado?: { motivo?: string | null } }>;
+  validacaoIA?: { comprovanteNomeDivergente?: boolean | null };
 }
 
 function montarResponse(candidato: CandidatoDoc) {
@@ -66,6 +67,7 @@ function montarResponse(candidato: CandidatoDoc) {
     },
     statusDocumentos: (candidato.statusDocumentos as StatusDocumentos) ?? 'AGUARDANDO_DOCUMENTOS',
     documentos,
+    comprovanteNomeDivergente: candidato.validacaoIA?.comprovanteNomeDivergente ?? null,
   };
 }
 

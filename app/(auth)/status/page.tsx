@@ -17,6 +17,7 @@ interface DadosCandidato {
     motivo: string | null;
     tentativas: number;
   }>;
+  comprovanteNomeDivergente?: boolean | null;
 }
 
 function extrairPrimeiroNome(nomeCompleto: string): string {
@@ -92,10 +93,14 @@ export default function PagePortal() {
 
     es.addEventListener('concluido', async (e) => {
       const evento = JSON.parse(e.data);
-      setDados((prev) => prev ? { ...prev, statusDocumentos: evento.statusFinal } : prev);
+      setDados((prev) => prev ? {
+        ...prev,
+        statusDocumentos: evento.statusFinal,
+        comprovanteNomeDivergente: evento.validacaoIA?.comprovanteNomeDivergente ?? prev.comprovanteNomeDivergente ?? null,
+      } : prev);
       es.close();
 
-      if (evento.statusFinal === 'APROVADO') {
+      if (evento.statusFinal === 'APROVADO' || evento.statusFinal === 'ANALISE_MANUAL') {
         buscarWhatsApp();
       }
     });
@@ -121,7 +126,7 @@ export default function PagePortal() {
     carregarDados().then((d) => {
       if (d && d.statusDocumentos === 'PROCESSANDO') {
         conectarSSE();
-      } else if (d && d.statusDocumentos === 'APROVADO') {
+      } else if (d && (d.statusDocumentos === 'APROVADO' || d.statusDocumentos === 'ANALISE_MANUAL')) {
         buscarWhatsApp();
       }
     });
@@ -267,13 +272,34 @@ export default function PagePortal() {
 
       {/* Banner de análise manual */}
       {analiseManual && (
-        <div className="px-6 pb-6">
-          <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 text-center">
-            <p className="text-blue-800 font-semibold text-sm">Em análise pela equipe</p>
-            <p className="text-blue-600 text-xs mt-1">
-              Nossa equipe irá analisar seus documentos e entrará em contato em breve.
-            </p>
-          </div>
+        <div className="px-6 pb-6 flex flex-col gap-4">
+          {dados.comprovanteNomeDivergente === true ? (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
+              <p className="text-amber-900 font-semibold text-sm mb-2">
+                Comprovante em nome de outra pessoa
+              </p>
+              <p className="text-amber-800 text-xs leading-relaxed">
+                Identificamos que seu comprovante de residência está no nome de outra pessoa.
+                Para continuar, envie via WhatsApp um dos documentos abaixo do titular do comprovante:
+              </p>
+              <ul className="text-amber-800 text-xs mt-2 ml-4 list-disc">
+                <li>CNH</li>
+                <li>RG</li>
+                <li>Certidão de casamento (se casado(a))</li>
+              </ul>
+              <p className="text-amber-800 text-xs mt-3">
+                Nossa equipe irá analisar e dar continuidade ao seu processo.
+              </p>
+            </div>
+          ) : (
+            <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 text-center">
+              <p className="text-blue-800 font-semibold text-sm">Em análise pela equipe</p>
+              <p className="text-blue-600 text-xs mt-1">
+                Nossa equipe irá analisar seus documentos e entrará em contato em breve.
+              </p>
+            </div>
+          )}
+          <SecaoContato whatsappLink={whatsappLink} carregando={whatsappCarregando} />
         </div>
       )}
     </main>

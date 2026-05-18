@@ -1,211 +1,275 @@
-# Validação de Documentos com IA — Specification
+# Documento de Implementação — Consolidação: `validacao-documentos-ia`
 
-**Status**: ✅ Implementado — branch `feature/validacao-documentos-ia` | Pendente: testes manuais (T33) e deploy produção
-
----
-
-## Problem Statement
-
-Hoje os candidatos aprovados na triagem do formulário enviam documentos manualmente pelo WhatsApp, onde um analista verifica cada arquivo. Isso cria gargalo operacional, não escala com volume, e é vulnerável a fraudes (documentos editados, identidade falsa). A automação com IA elimina o gargalo, reduz tempo de análise de horas para segundos, e adiciona verificações de integridade impossíveis manualmente.
-
-## Goals
-
-- [x] Candidato envia 5 documentos e recebe resultado da análise em < 2 minutos
-- [x] IA valida automaticamente 6 critérios (CNH, comprovante, biometria, placa, vídeo app, vídeo veículo)
-- [x] Cruzamento automático de dados entre documentos (nome, CPF, placa, rosto)
-- [x] Candidato tem área própria com login para acompanhar status e reenviar documentos
-- [x] Analista é alertado automaticamente após 3 tentativas falhas de um documento
-
-## Out of Scope
-
-- Validação biométrica com certificação regulatória bancária
-- Confirmação de modelo/ano do veículo por IA
-- Continuidade entre dispositivos como requisito funcional
-- Migração do painel-credfacil (projeto separado)
-- Envio automático de mensagens WhatsApp pela aplicação
+**Data:** 2026-05-18  
+**Status:** Aguardando aprovação  
+**Branch:** `validacao-documentos-ia`
 
 ---
 
-## User Stories
+## 1. Contexto e Objetivo
 
-### P1: Upload de documentos ⭐ MVP
-
-**User Story**: Como candidato aprovado, quero enviar meus 5 documentos pela área logada para que sejam analisados automaticamente.
-
-**Why P1**: Sem upload, não há validação. É o ponto de entrada de toda a feature.
-
-**Acceptance Criteria**:
-
-1. WHEN candidato acessa /documentos autenticado THEN sistema SHALL exibir 5 slots de upload (CNH, Comprovante, Selfie+Veículo, Vídeo App, Vídeo Veículo)
-2. WHEN candidato seleciona arquivo válido THEN sistema SHALL fazer upload via presigned URL direto para R2 e exibir preview/confirmação
-3. WHEN candidato seleciona arquivo com formato inválido THEN sistema SHALL rejeitar com mensagem "Formato não suportado. Use JPG, PNG ou PDF"
-4. WHEN candidato seleciona arquivo maior que o limite THEN sistema SHALL rejeitar com mensagem "Arquivo muito grande. Máximo: 10MB para imagens, 100MB para vídeos"
-5. WHEN todos os 5 documentos estão enviados THEN sistema SHALL habilitar botão "Enviar para análise"
-6. WHEN candidato clica "Enviar para análise" THEN sistema SHALL salvar URLs no MongoDB e redirecionar para /status
-
-**Independent Test**: Fazer upload de 5 arquivos de teste e verificar que todos chegaram no R2 com path correto `documentos/{formCode}/{tipo}_{timestamp}.{ext}`
+Este documento consolida os requisitos de negócio fornecidos pelo cliente com o estado atual do código, mapeando as lacunas e o que precisa ser implementado/ajustado para que a validação automática reflita fielmente o processo manual já realizado pela equipe Credfácil.
 
 ---
 
-### P1: Autenticação do candidato ⭐ MVP
+## 2. Regras de Negócio (fonte: cliente)
 
-**User Story**: Como candidato, quero criar minha senha após o formulário e acessar minha área para enviar documentos e acompanhar o status.
+### 2.1 CNH
+- Nome e CPF da CNH **devem** ser iguais ao do cadastro.
+- Hoje: ✅ já implementado em `iniciar/route.ts` (cruzamento em tempo real, linhas 131–149).
 
-**Why P1**: Sem autenticação, não há área do candidato. Bloqueia todo o fluxo.
+### 2.2 Comprovante de Residência
+**Validações obrigatórias (ambos os cenários):**
+- O **endereço** do comprovante deve conferir com o endereço do cadastro do candidato (logradouro, número, bairro, cidade, UF, CEP — critério: ≥ 70% dos campos presentes conferem).
+- O comprovante deve ter sido emitido há menos de 90 dias.
+- O documento deve estar legível e sem cortes.
 
-**Acceptance Criteria**:
+**Cenário A — comprovante no nome do candidato:** nome deve bater com o cadastro (similaridade ≥ 85%) + endereço confere → aprovação automática.
 
-1. WHEN candidato completa o formulário (submit com sucesso) THEN sistema SHALL exibir tela de cadastro de senha no /aprovado
-2. WHEN candidato define senha (mín 6 caracteres) e confirma THEN sistema SHALL salvar hash bcrypt no MongoDB, gerar JWT httpOnly cookie (7 dias), e redirecionar para /documentos (auto-login)
-3. WHEN candidato retorna depois e acessa /login THEN sistema SHALL aceitar CPF + senha e gerar JWT
-4. WHEN candidato erra a senha 5 vezes THEN sistema SHALL bloquear login por 15 minutos
-5. WHEN candidato acessa rota protegida /(auth)/* sem JWT válido THEN sistema SHALL redirecionar para /login
-6. WHEN candidato clica "Esqueci minha senha" THEN sistema SHALL enviar email com link de redefinição (token válido por 1h)
+**Cenário B — comprovante no nome de outra pessoa (proprietário):** endereço ainda deve conferir com o cadastro. Se conferir, o candidato deve enviar documento complementar (CNH/RG/certidão de casamento do titular).
+- Neste caso, o registro vai para **análise manual** e o botão do WhatsApp é liberado.
+- Se o endereço **não** conferir → rejeição normal (documento inválido).
 
-**Independent Test**: Criar senha, sair, fazer login com CPF + senha, verificar acesso a /documentos
+**Hoje:**
+- ✅ Validação de endereço já implementada em `iniciar/route.ts` (linhas 152–169) e `cruzamento.ts`.
+- ❌ Fluxo de exceção para nome de terceiro não implementado — o sistema rejeita em vez de encaminhar para análise manual.
 
----
+### 2.3 Selfie da Placa
+- A placa da selfie deve ser a **mesma** do vídeo do app e do vídeo do veículo.
+- Hoje: ✅ já implementado via cruzamento final em `cruzamento.ts` (≥ 2/3 fontes concordam).
 
-### P1: Pipeline de validação com IA ⭐ MVP
+### 2.4 Vídeo do APP
+O vídeo precisa mostrar **tudo abaixo**, sem cortes, em formato mensal (mês a mês):
+| Campo obrigatório | Regra de negócio |
+|---|---|
+| Perfil com nome e foto | Nome deve bater com o cadastro |
+| Placa cadastrada no app | Deve coincidir com selfie e vídeo do veículo |
+| Ganhos últimos 6 meses | **Mínimo R$ 3.500/mês** em cada um dos 6 meses, formato mês a mês |
+| Tempo de uso no app | Apenas extrair/registrar |
+| Total de corridas/viagens | Apenas extrair/registrar |
+| Formato proibido | Ganhos diários, semanais, vídeo cortado ou incompleto |
 
-**User Story**: Como sistema, quero validar automaticamente os 5 documentos usando Gemini e Rekognition para aprovar ou rejeitar cada um com critérios objetivos.
+- **Hoje:** ❌ parcialmente implementado. O Gemini extrai `faturamento180d` como texto livre; não há parser de valor mensal nem validação do mínimo de R$ 3.500/mês.
 
-**Why P1**: Core da feature. Sem IA, volta ao processo manual.
-
-**Acceptance Criteria**:
-
-1. WHEN /api/validacao/iniciar é chamado THEN sistema SHALL disparar 6 validações em paralelo via Promise.allSettled
-2. WHEN Gemini analisa CNH THEN sistema SHALL extrair nome, CPF, validade, categoria e verificar legibilidade
-3. WHEN Gemini analisa comprovante THEN sistema SHALL extrair nome, data de emissão, endereço e rejeitar se > 90 dias
-4. WHEN Gemini analisa selfie THEN sistema SHALL verificar pessoa visível, veículo visível, extrair placa, verificar autenticidade
-5. WHEN Rekognition compara selfie vs CNH THEN sistema SHALL aprovar se score >= 90%, marcar pendência se 80-90%, rejeitar se < 80%
-6. WHEN Gemini analisa vídeo do app THEN sistema SHALL extrair nome perfil, placa, faturamento 180d, tempo uso, total corridas, detectar cortes
-7. WHEN Gemini analisa vídeo do veículo THEN sistema SHALL verificar veículo ligado, extrair placa, detectar cortes
-8. WHEN qualquer validação falha com erro de API THEN sistema SHALL marcar documento como "erro" e permitir reprocessamento sem contar como tentativa
-
-**Independent Test**: Submeter set de documentos de teste (válidos e inválidos) e verificar resultados no MongoDB
-
----
-
-### P1: Cruzamento de dados (validacaoIA) ⭐ MVP
-
-**User Story**: Como sistema, quero cruzar dados extraídos entre documentos para detectar inconsistências.
-
-**Why P1**: Sem cruzamento, cada documento é validado isoladamente e fraudes passam.
-
-**Acceptance Criteria**:
-
-1. WHEN todas as 6 validações individuais terminam THEN sistema SHALL executar cruzamento automático
-2. WHEN nome da CNH vs nome do perfil no vídeo app THEN sistema SHALL aprovar se similaridade Levenshtein >= 85%
-3. WHEN CPF da CNH vs CPF do formulário THEN sistema SHALL aprovar se igualdade exata
-4. WHEN placa da selfie vs placa do vídeo app vs placa do vídeo veículo THEN sistema SHALL aprovar se pelo menos 2 de 3 são iguais
-5. WHEN Rekognition score da biometria THEN sistema SHALL registrar valor numérico e aprovar/rejeitar por threshold
-6. WHEN qualquer cruzamento falha THEN sistema SHALL marcar statusDocumentos como "PENDENCIA" com motivo específico
-
-**Independent Test**: Submeter documentos com nome levemente diferente na CNH vs app e verificar que o cruzamento detecta/tolera
+### 2.5 Vídeo do Veículo
+- Deve mostrar a **placa** e o veículo em funcionamento.
+- A placa deve coincidir com o vídeo do app e a selfie.
+- Hoje: ✅ extração da placa e verificação de veículo ligado já implementados.
 
 ---
 
-### P1: Progresso em tempo real ⭐ MVP
+## 3. Gaps vs. Código Atual
 
-**User Story**: Como candidato, quero ver cada documento sendo validado em tempo real para saber o que está acontecendo.
-
-**Why P1**: Sem feedback, candidato fica 2 minutos numa tela parada — experiência ruim.
-
-**Acceptance Criteria**:
-
-1. WHEN candidato acessa /status THEN sistema SHALL abrir conexão SSE com /api/validacao/status
-2. WHEN uma validação individual termina THEN sistema SHALL enviar evento SSE com tipo do documento, status e resultado
-3. WHEN todas as validações terminam THEN sistema SHALL enviar evento "concluido" com statusFinal e validacaoIA
-4. WHEN statusFinal == "APROVADO" THEN sistema SHALL exibir botão WhatsApp (com rodízio de números)
-5. WHEN statusFinal == "PENDENCIA" THEN sistema SHALL exibir quais documentos reenviar e o motivo de cada um
-6. WHEN conexão SSE cai THEN sistema SHALL reconectar automaticamente e buscar estado atual do MongoDB
-
-**Independent Test**: Abrir /status e verificar que eventos SSE chegam conforme validações terminam no backend
+| # | Gap | Arquivo(s) afetado(s) | Prioridade |
+|---|---|---|---|
+| G1 | Comprovante em nome de terceiro → deve ir para análise manual + liberar WhatsApp, não rejeitar (endereço ainda deve conferir; apenas o nome pode ser de terceiro) | `comprovante.ts`, `cruzamento.ts`, `iniciar/route.ts`, `status/page.tsx` | Alta |
+| G2 | Vídeo do app não valida faturamento mínimo (R$3.500/mês × 6 meses) nem formato mensal | `video-app.ts`, `iniciar/route.ts` | Alta |
+| G3 | Vídeo do app não verifica se exibe ganhos diários/semanais (formato proibido) | `video-app.ts` | Alta |
+| G4 | Vídeo do app não verifica campos visuais obrigatórios: foto de perfil, placa no app | `video-app.ts` | Média |
+| G5 | `ValidacaoIA` não possui campo `comprovanteNomeDivergente` para distinguir divergência de nome por terceiro | `types/documentos.ts`, `cruzamento.ts` | Alta |
+| G6 | UI não exibe o fluxo "comprovante de terceiro": instrução para enviar doc complementar + botão WhatsApp | `status/page.tsx`, componentes relacionados | Alta |
 
 ---
 
-### P1: Reenvio de documentos ⭐ MVP
+## 4. Plano de Implementação
 
-**User Story**: Como candidato, quero reenviar apenas o documento rejeitado para corrigir o problema apontado.
+### 4.1 G5 — Novo campo no tipo `ValidacaoIA`
+**Arquivo:** [types/documentos.ts](../formulario-credfacil/types/documentos.ts)
 
-**Why P1**: Sem reenvio, candidato precisa reenviar tudo ou é bloqueado.
-
-**Acceptance Criteria**:
-
-1. WHEN documento tem status "rejeitado" e tentativas < 3 THEN sistema SHALL exibir botão "Reenviar" com o motivo da rejeição
-2. WHEN candidato reenvia documento THEN sistema SHALL fazer novo upload para R2 (novo path), incrementar tentativas, e disparar validação apenas desse documento
-3. WHEN reenvio é aprovado THEN sistema SHALL reexecutar cruzamento de dados com os resultados atualizados
-4. WHEN tentativas de um documento atingem 3 e ainda rejeitado THEN sistema SHALL marcar statusDocumentos como "ANALISE_MANUAL" e alertar analista via Telegram
-5. WHEN statusDocumentos == "ANALISE_MANUAL" THEN sistema SHALL exibir "Seus documentos estão em análise pela equipe"
-
-**Independent Test**: Rejeitar um documento de teste, reenviar, verificar que apenas aquele documento é revalidado e o contador incrementa
+Adicionar:
+```ts
+comprovanteNomeDivergente: boolean | null;
+// true = nome do comprovante ≠ nome do cadastro (possível terceiro)
+```
 
 ---
 
-### P1: Infraestrutura Docker + Coolify ⭐ MVP
+### 4.2 G1 — Lógica de comprovante em nome de terceiro
 
-**User Story**: Como operador, quero o formulário rodando como container no Coolify da VPS para ter controle total e sem timeout.
+**Arquivo:** [lib/ai/validacoes/comprovante.ts](../formulario-credfacil/lib/ai/validacoes/comprovante.ts)
 
-**Why P1**: Sem infra, nada roda. Bloqueia deploy.
+A validação do comprovante **não deve** reprovar automaticamente por nome divergente. Deve retornar `aprovado: true` e um campo auxiliar `nomeDivergente: true` quando o nome não bater — permitindo que a camada de cruzamento decida o fluxo.
 
-**Acceptance Criteria**:
+Alterar retorno de `validarComprovante`:
+```ts
+// Adicionar ao retorno:
+nomeDivergente: boolean;
+```
 
-1. WHEN deploy via Coolify (push no GitHub) THEN sistema SHALL buildar imagem Docker e servir em domínio com SSL
-2. WHEN container inicia THEN sistema SHALL conectar ao MongoDB via rede interna Docker
-3. WHEN API route de validação roda > 60s THEN sistema SHALL completar normalmente (sem timeout)
-4. WHEN container reinicia THEN sistema SHALL reconectar ao MongoDB e retomar operação
-
-**Independent Test**: Push no repo, verificar que Coolify builda e serve o formulário no domínio configurado
-
----
-
-### P2: Recuperação de senha
-
-**User Story**: Como candidato, quero recuperar minha senha via email caso esqueça.
-
-**Why P2**: Importante para retenção, mas não bloqueia o fluxo inicial (candidato cria senha e usa na mesma sessão).
-
-**Acceptance Criteria**:
-
-1. WHEN candidato informa CPF em /login e clica "Esqueci minha senha" THEN sistema SHALL buscar email associado e enviar link com token (1h validade)
-2. WHEN candidato acessa link de redefinição com token válido THEN sistema SHALL exibir formulário de nova senha
-3. WHEN candidato define nova senha THEN sistema SHALL atualizar hash no MongoDB e invalidar token
-4. WHEN token expirado ou já usado THEN sistema SHALL exibir "Link expirado, solicite novamente"
-
-**Independent Test**: Solicitar recuperação, verificar email recebido, redefinir senha, fazer login com nova senha
+Remover a rejeição por nome divergente do comprovante de dentro de `validarComprovante` (a função hoje não verifica nome, mas o `iniciar/route.ts` sim — ver item abaixo).
 
 ---
 
-### P3: Área do candidato expandida
+**Arquivo:** [app/api/validacao/iniciar/route.ts](../formulario-credfacil/app/api/validacao/iniciar/route.ts) — linhas 152–169
 
-**User Story**: Como candidato, quero ver meus dados e status geral do processo na minha área.
+Atualmente o cruzamento do comprovante rejeita automaticamente se o endereço não confere. Manter essa lógica para **endereço**. Para o **nome**, a lógica muda:
 
-**Why P3**: Nice-to-have para v1. Fundação construída com a autenticação, página pode ser adicionada depois.
+```
+SE nome do comprovante ≠ nome do cadastro:
+  → NÃO rejeitar o documento
+  → Marcar status = 'aprovado' (ou novo status 'pendente_complementar')
+  → Setar flag comprovanteNomeDivergente = true no documento
+  → Registrar motivo para exibição na UI
+```
 
-**Acceptance Criteria**:
-
-1. WHEN candidato acessa /perfil THEN sistema SHALL exibir dados pessoais, status dos documentos e histórico de envios
-
----
-
-## Edge Cases
-
-- WHEN upload do R2 falha (rede, timeout) THEN sistema SHALL exibir "Erro no envio. Tente novamente" e permitir retry sem perder outros uploads
-- WHEN API do Gemini retorna erro 429 (rate limit) THEN sistema SHALL aguardar 5s e tentar novamente (máx 2 retries)
-- WHEN API do Rekognition falha THEN sistema SHALL marcar biometria como "erro" e não contar como tentativa
-- WHEN candidato fecha o browser durante validação THEN sistema SHALL continuar processando no servidor e candidato pode ver resultado ao voltar via /status
-- WHEN candidato tenta enviar para análise com documento faltando THEN sistema SHALL manter botão desabilitado e indicar quais documentos faltam
-- WHEN vídeo é muito curto (< 3s) THEN sistema SHALL rejeitar com "Vídeo muito curto. Grave pelo menos 5 segundos"
-- WHEN Gemini não consegue extrair placa de nenhuma fonte THEN sistema SHALL marcar placaConfere como null e escalar para revisão humana
-- WHEN candidato já tem statusDocumentos == "APROVADO" e acessa /documentos THEN sistema SHALL exibir resultado final e botão WhatsApp
+A decisão de fluxo (análise manual) acontece na determinação do `statusDocumentos` final:
+```
+SE comprovanteNomeDivergente = true:
+  → statusDocumentos = 'ANALISE_MANUAL'
+  → liberar botão WhatsApp (já ocorre para ANALISE_MANUAL)
+  → NÃO bloquear candidato — ele só precisa levar o doc do titular
+```
 
 ---
 
-## Success Criteria
+**Arquivo:** [lib/ai/cruzamento.ts](../formulario-credfacil/lib/ai/cruzamento.ts)
 
-- [ ] Candidato completa upload + validação em < 2 minutos (excluindo tempo de gravação de vídeo) — *a verificar em produção*
-- [ ] 90%+ dos documentos válidos são aprovados automaticamente sem intervenção humana — *a verificar em produção*
-- [ ] 95%+ dos documentos fraudulentos são detectados (cortes em vídeo, rosto diferente, placa inconsistente) — *a verificar em produção*
-- [x] Zero dados sensíveis expostos no path de storage (usando formCode UUID, não CPF)
-- [ ] Tempo de indisponibilidade zero durante deploy (Coolify rolling restart) — *a verificar em produção*
+Adicionar ao resultado de `cruzarDados`:
+```ts
+comprovanteNomeDivergente: boolean | null;
+```
+Calcular: `true` quando `comp.nome` existe e similaridade com `cadastro.nomeCompleto` < 85%.
+
+---
+
+### 4.3 G2 + G3 + G4 — Validação do Vídeo do App
+
+**Arquivo:** [lib/ai/validacoes/video-app.ts](../formulario-credfacil/lib/ai/validacoes/video-app.ts)
+
+#### Novo prompt Gemini — campos adicionais:
+```
+8. O vídeo mostra os ganhos em formato MENSAL (mês a mês)? Ou mostra ganhos diários/semanais (formato inválido)?
+9. Extraia os ganhos mês a mês dos últimos 6 meses como array de objetos {mes: "YYYY-MM", valor: number}.
+   Se não for possível extrair mês a mês (apenas total ou por dia/semana), retorne formatoGanhos = "invalido".
+10. A foto do perfil do candidato aparece visível no vídeo?
+11. A placa do veículo está visível no app (cadastrada no perfil)?
+
+Responda APENAS em JSON:
+{
+  "nomePerfil": "...",
+  "placa": "...",
+  "faturamento180d": "...",
+  "ganhosMensais": [{"mes": "YYYY-MM", "valor": 3800}, ...],
+  "formatoGanhos": "mensal" | "invalido" | "nao_identificado",
+  "fotoPerfilVisivel": true,
+  "tempoUso": "...",
+  "totalCorridas": "...",
+  "temCortes": false,
+  "motivoCortes": null,
+  "aplicativo": "..."
+}
+```
+
+#### Novo tipo `ResultadoVideoApp`:
+```ts
+ganhosMensais: Array<{ mes: string; valor: number }> | null;
+formatoGanhos: 'mensal' | 'invalido' | 'nao_identificado' | null;
+fotoPerfilVisivel: boolean | null;
+```
+
+#### Regras de validação em `validarVideoApp`:
+```
+SE formatoGanhos = 'invalido':
+  → aprovado = false, motivo = 'Ganhos não estão no formato mensal (mês a mês). Não envie ganhos diários ou semanais.'
+
+SE ganhosMensais não null E length >= 6:
+  → verificar se TODOS os 6 meses têm valor >= 3500
+  → SE algum mês < 3500:
+    → aprovado = false, motivo = 'Faturamento mensal abaixo de R$ 3.500 em um ou mais meses dos últimos 6 meses.'
+  → SE menos de 6 meses disponíveis:
+    → aprovado = false, motivo = 'Vídeo não mostra os ganhos dos últimos 6 meses completos.'
+```
+
+---
+
+### 4.4 G6 — UI: fluxo comprovante de terceiro
+
+**Arquivo:** [app/(auth)/status/page.tsx](../formulario-credfacil/app/(auth)/status/page.tsx)
+
+Quando `statusFinal === 'ANALISE_MANUAL'` E `validacaoIA.comprovanteNomeDivergente === true`:
+
+Exibir mensagem específica ao candidato:
+> "Identificamos que seu comprovante de residência está no nome de outra pessoa. Para continuar, envie via WhatsApp: a CNH, RG ou certidão de casamento do titular do comprovante. Nossa equipe irá analisar e dar continuidade."
+
+O botão do WhatsApp já é liberado em `ANALISE_MANUAL` — apenas adicionar contexto visual para este caso específico.
+
+---
+
+## 5. Mudanças Resumidas por Arquivo
+
+| Arquivo | Tipo | Descrição |
+|---|---|---|
+| [types/documentos.ts](../formulario-credfacil/types/documentos.ts) | Refatoração | Adicionar `comprovanteNomeDivergente` em `ValidacaoIA`; adicionar campos em `ResultadoVideoApp` |
+| [lib/ai/validacoes/comprovante.ts](../formulario-credfacil/lib/ai/validacoes/comprovante.ts) | Refatoração | Adicionar `nomeDivergente` ao retorno; não reprovar por nome (endereço mantém) |
+| [lib/ai/validacoes/video-app.ts](../formulario-credfacil/lib/ai/validacoes/video-app.ts) | Refatoração | Novo prompt + campos; validar faturamento mínimo R$3.500/mês × 6 meses; bloquear formato inválido |
+| [lib/ai/cruzamento.ts](../formulario-credfacil/lib/ai/cruzamento.ts) | Refatoração | Calcular e retornar `comprovanteNomeDivergente` |
+| [app/api/validacao/iniciar/route.ts](../formulario-credfacil/app/api/validacao/iniciar/route.ts) | Refatoração | Cruzamento do comprovante: separar lógica de endereço e nome; sinalizar divergência sem rejeitar; incluir `comprovanteNomeDivergente` no `statusDocumentos` final |
+| [app/(auth)/status/page.tsx](../formulario-credfacil/app/(auth)/status/page.tsx) | Feature | Exibir mensagem contextual quando `ANALISE_MANUAL` por comprovante de terceiro |
+
+---
+
+## 6. Fluxo Atualizado — Comprovante de Terceiro
+
+```
+Candidato envia comprovante em nome do proprietário
+        ↓
+IA extrai nome e endereço do comprovante
+        ↓
+Endereço confere com cadastro? (≥ 70% dos campos)
+  NÃO → Rejeitar: "Endereço do comprovante não confere com o cadastro"
+        ↓
+Nome ≠ nome do cadastro (sim) + endereço OK
+        ↓
+comprovanteNomeDivergente = true
+Documento marcado como aprovado (endereço conferiu)
+        ↓
+statusDocumentos = ANALISE_MANUAL
+        ↓
+UI: Mensagem explicativa + botão WhatsApp liberado
+        ↓
+Equipe Credfácil recebe candidato no WhatsApp
+solicita CNH/RG/certidão do titular
+        ↓
+Análise manual e liberação
+```
+
+---
+
+## 7. Fluxo Atualizado — Vídeo do App
+
+```
+Candidato envia vídeo do app
+        ↓
+Gemini analisa: extrai ganhos mês a mês, verifica formato
+        ↓
+Formato inválido (diário/semanal)?
+  → Rejeitar: "Não envie ganhos diários ou semanais"
+        ↓
+Menos de 6 meses visíveis?
+  → Rejeitar: "Mostre os últimos 6 meses completos"
+        ↓
+Algum mês < R$ 3.500?
+  → Rejeitar: "Faturamento abaixo do mínimo em X meses"
+        ↓
+Todos ≥ R$ 3.500 × 6 meses → OK
+        ↓
+Cruzar placa com selfie e vídeo do veículo (já existente)
+        ↓
+Aprovado
+```
+
+---
+
+## 8. Fora de Escopo (não implementar agora)
+
+- Upload de documento complementar do titular do comprovante via portal.
+- Parser de certidão de casamento pela IA.
+- Fluxo de reenvio automático do comprovante após análise manual.
+
+---
+
+## 9. Notas Técnicas
+
+- O campo `motivo` da rejeição do vídeo do app **deve** ser direto e em português, pois é exibido ao candidato na UI.
+- O `ganhosMensais` deve ser parseado como array numérico no prompt — pedir ao Gemini explicitamente `"valor": number` (não string) para evitar parsing extra.
+- Testar com vídeos reais que mostrem apenas faturamento diário (caso mais comum de reenvio) para calibrar o prompt antes de ir a produção.

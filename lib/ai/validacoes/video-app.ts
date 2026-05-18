@@ -9,6 +9,11 @@ const PROMPT = `Analise este vídeo de gravação de tela de um aplicativo de tr
 5. Total de corridas/entregas (se visível)
 6. Qual aplicativo está sendo mostrado?
 7. O vídeo apresenta sinais de adulteração ou edição maliciosa?
+8. O vídeo mostra os ganhos em formato MENSAL (mês a mês)? Ou apenas diário/semanal/total?
+9. Extraia os ganhos mês a mês dos últimos 6 meses: [{"mes": "YYYY-MM", "valor": 3800}, ...].
+   Se ganhos estiverem em formato diário, semanal ou apenas total: retorne formatoGanhos = "invalido".
+   Se não identificado: retorne formatoGanhos = "nao_identificado".
+10. A foto do perfil do candidato aparece visível no vídeo?
 
 IMPORTANTE sobre cortes/transições:
 - Este é um vídeo de GRAVAÇÃO DE TELA. O usuário navega entre telas, abas e aplicativos diferentes durante a gravação.
@@ -24,7 +29,10 @@ Responda APENAS em JSON:
   "totalCorridas": "...",
   "temCortes": false,
   "motivoCortes": null,
-  "aplicativo": "..."
+  "aplicativo": "...",
+  "ganhosMensais": [{"mes": "YYYY-MM", "valor": 3800}],
+  "formatoGanhos": "mensal",
+  "fotoPerfilVisivel": true
 }`;
 
 export async function validarVideoApp(videoUrl: string): Promise<{
@@ -36,6 +44,31 @@ export async function validarVideoApp(videoUrl: string): Promise<{
 
   if (dados.temCortes) {
     return { aprovado: false, motivo: 'Vídeo apresenta cortes ou edição', dadosExtraidos: dados };
+  }
+
+  if (dados.formatoGanhos === 'invalido') {
+    return {
+      aprovado: false,
+      motivo: 'Ganhos não estão no formato mensal. Mostre mês a mês — não envie ganhos diários ou semanais.',
+      dadosExtraidos: dados,
+    };
+  }
+
+  if (dados.ganhosMensais && Array.isArray(dados.ganhosMensais)) {
+    if (dados.ganhosMensais.length < 6) {
+      return {
+        aprovado: false,
+        motivo: 'Vídeo não mostra os ganhos dos últimos 6 meses completos.',
+        dadosExtraidos: dados,
+      };
+    }
+    if (dados.ganhosMensais.some((g) => g.valor < 3500)) {
+      return {
+        aprovado: false,
+        motivo: 'Faturamento mensal abaixo de R$ 3.500 em um ou mais dos últimos 6 meses.',
+        dadosExtraidos: dados,
+      };
+    }
   }
 
   return { aprovado: true, motivo: null, dadosExtraidos: dados };

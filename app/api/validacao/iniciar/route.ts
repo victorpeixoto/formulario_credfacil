@@ -78,7 +78,7 @@ async function executarPipeline(
     const url = urls[tipo];
     switch (tipo) {
       case 'cnh': tarefas.push(['cnh', () => validarCNH(url)]); break;
-      case 'comprovante': tarefas.push(['comprovante', () => validarComprovante(url)]); break;
+      case 'comprovante': tarefas.push(['comprovante', () => validarComprovante(url, cadastro.nomeCompleto)]); break;
       case 'selfie': tarefas.push(['selfie', () => validarSelfiePlaca(url)]); break;
       case 'videoApp': tarefas.push(['videoApp', () => validarVideoApp(url)]); break;
       case 'videoVeiculo': tarefas.push(['videoVeiculo', () => validarVideoVeiculo(url)]); break;
@@ -119,6 +119,7 @@ async function executarPipeline(
     if (resultado.status === 'fulfilled') {
       let { aprovado, motivo } = resultado.value;
       const { dadosExtraidos } = resultado.value;
+      const nomeDivergenteComp = (resultado.value as { nomeDivergente?: boolean }).nomeDivergente;
       console.log(
         `[validacao] ${tipo}: ${aprovado ? 'APROVADO' : 'REJEITADO'} (${duracaoMs}ms)` +
         (motivo ? ` | motivo: ${motivo}` : '')
@@ -195,11 +196,15 @@ async function executarPipeline(
       if (tipo !== 'biometria') {
         const tipoDoc = tipo as TipoDocumento;
         const tentativasAnterior = (docAtual as unknown as Record<string, { tentativas?: number }>)[tipoDoc]?.tentativas ?? 0;
+        const resultadoFinal: Record<string, unknown> = { aprovado, motivo, dadosExtraidos };
+        if (tipoDoc === 'comprovante' && typeof nomeDivergenteComp === 'boolean') {
+          resultadoFinal.nomeDivergente = nomeDivergenteComp;
+        }
         await updateStatus(tipoDoc, {
           url: fileKeys[tipoDoc] ?? docAtual[tipoDoc as keyof DocumentosMap]?.url,
           status: aprovado ? 'aprovado' : 'rejeitado',
           tentativas: tentativasAnterior + 1,
-          resultado: { aprovado, motivo, dadosExtraidos },
+          resultado: resultadoFinal,
           atualizadoEm: new Date().toISOString(),
         });
       }
@@ -281,7 +286,16 @@ async function executarPipeline(
   );
 
   let statusDocumentos: string;
-  if (todosAprovados && !algumRejeitado && !divergenciaIdentidade) {
+  if (todosAprovados && !algumRejeitado && !divergenciaIdentidade && validacaoIA.comprovanteNomeDivergente === true) {
+    statusDocumentos = 'ANALISE_MANUAL';
+    await sendTelegramAlert(
+      `⚠️ *CREDFÁCIL — ANÁLISE MANUAL*\n\nCandidato: \`${cpf}\`\nCódigo: \`${formCode}\`\nMotivo: Comprovante em nome de terceiro`
+    );
+    await db.collection('conversations').updateOne(
+      { formCode },
+      { $set: { analistaAlertado: true } }
+    );
+  } else if (todosAprovados && !algumRejeitado && !divergenciaIdentidade) {
     statusDocumentos = 'APROVADO';
   } else if (algumRejeitado || divergenciaIdentidade) {
     const precisaAnalise = statusDocs.some(

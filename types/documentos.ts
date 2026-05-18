@@ -24,6 +24,7 @@ export interface ValidacaoIA {
   enderecoConfere: boolean | null;
   biometriaConfere: boolean | null;
   biometriaScore: number | null;
+  comprovanteNomeDivergente: boolean | null;
 }
 
 export interface DocumentosMap {
@@ -77,6 +78,9 @@ export interface ResultadoVideoApp {
   totalCorridas: string | null;
   temCortes: boolean;
   aplicativo: string | null;
+  ganhosMensais: Array<{ mes: string; valor: number }> | null;
+  formatoGanhos: 'mensal' | 'invalido' | 'nao_identificado' | null;
+  fotoPerfilVisivel: boolean | null;
 }
 
 export interface ResultadoVideoVeiculo {
