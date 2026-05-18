@@ -1,23 +1,36 @@
 # State
 
-**Last updated:** 2026-05-10
-**Session:** Portal do Cliente implementado — reenvio individual de documentos rejeitados, redirect inteligente e correção de erro 500
+**Last updated:** 2026-05-18
+**Session:** Implementação e deploy do fix do bug crítico de nomes divergentes (ClickUp `86ahg6bqq`)
 
 ---
 
 ## Current Focus
 
-Feature "Portal do Cliente" — implementada e commitada na branch `feature/validacao-documentos-ia` (commit `afeabc8`). Pronto para testes no celular via Vercel Preview.
+Feature "Portal do Cliente" — implementada e commitada na branch `feature/validacao-documentos-ia`. Testes E2E pendentes.
 
-Feature "Login do Cliente Existente" — spec aprovada. Redirect inteligente pós-login **implementado** como parte do portal: login agora usa `temDocumentos` flag para decidir entre `/status` e `/documentos`.
+**BUG CRÍTICO RESOLVIDO** — `[BUG] IA aprovou cadastro com nomes divergentes entre aplicativo e documentos` (ClickUp `86ahg6bqq`).  
+Fix implementado, commitado (`6648b48`), pushed e task marcada como `complete` no ClickUp.
 
 ## Active Work
 
-- Branch `feature/validacao-documentos-ia`: 9 commits, TypeScript ✅ sem erros
+- Branch `feature/validacao-documentos-ia`: TypeScript ✅ sem erros, build ✅
 - Aguardando testes manuais E2E no celular via Vercel Preview (T33)
 - Próximo passo: merge para master após validação
 
 ## Recent Decisions
+
+- **2026-05-18:** Bug crítico implementado e deployado — commit `6648b48`
+  - T1: log diagnóstico de `cadastro.nomeCompleto` no início do pipeline
+  - T2: cruzamento de nome da CNH corrigido (guard, sem cálculo duplicado, log)
+  - T3: cruzamento de `nomePerfil` do videoApp contra cadastro adicionado
+  - T4: `divergenciaIdentidade` bloqueia `statusDocumentos = APROVADO` quando `validacaoIA` detecta divergência
+  - ClickUp `86ahg6bqq` → `complete`
+
+- **2026-05-18:** Bug crítico identificado e planejado — IA aprovando nomes divergentes
+  - Causa raiz: bloco de nome da CNH pode ter bug silencioso; vídeo do app nunca tem nome comparado com cadastro; `validacaoIA` não é considerado no status final
+  - Solução: 4 tasks localizadas em `app/api/validacao/iniciar/route.ts`, ~75 min de implementação
+  - Spec em `.specs/features/bug-nome-divergente/`
 
 - **2026-05-10:** Portal do Cliente implementado (T34/T35)
   - `/status` reescrita como portal com saudação personalizada, barra de progresso e cards de documentos
