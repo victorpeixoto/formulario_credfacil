@@ -34,6 +34,7 @@ const STATUS_CONFIG: Record<string, { label: string; cor: string; bg: string; bo
   aprovado: { label: 'Aprovado', cor: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200' },
   rejeitado: { label: 'Rejeitado', cor: 'text-red-500', bg: 'bg-red-50', border: 'border-red-200' },
   erro: { label: 'Erro', cor: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200' },
+  analise_manual: { label: 'Em análise', cor: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-300' },
 };
 
 export default function CardDocumento({
@@ -81,6 +82,9 @@ export default function CardDocumento({
           )}
           {status === 'erro' && !motivo && (
             <p className="text-xs text-amber-500 mt-0.5">Erro técnico — reenvie o documento</p>
+          )}
+          {status === 'analise_manual' && (
+            <p className="text-xs text-amber-600 mt-0.5">Comprovante em nome de terceiro — aguardando análise</p>
           )}
           {analisando && (
             <p className="text-xs text-blue-400 mt-0.5">Validação em andamento...</p>

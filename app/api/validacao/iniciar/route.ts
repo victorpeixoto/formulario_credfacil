@@ -167,6 +167,9 @@ async function executarPipeline(
           console.log(`[cruzamento] Comprovante rejeitado: ${acertos}/${checks.length} campos conferem`);
           console.log(`[cruzamento] comprovante: log="${dados.logradouro}" n="${dados.numero}" bairro="${dados.bairro}" cidade="${dados.cidade}" uf="${dados.estadoUF}" cep="${dados.cep}"`);
           console.log(`[cruzamento] cadastro:    log="${cadastro.logradouro}" n="${cadastro.numero}" bairro="${cadastro.bairro}" cidade="${cadastro.cidade}" uf="${cadastro.estadoUF}" cep="${cadastro.cep}"`);
+        } else if (nomeDivergenteComp === true) {
+          // Endereço confere mas comprovante está em nome de terceiro — encaminhar para análise manual
+          console.log(`[cruzamento] Comprovante: endereço OK mas nome de terceiro → analise_manual`);
         }
       }
 
@@ -200,9 +203,13 @@ async function executarPipeline(
         if (tipoDoc === 'comprovante' && typeof nomeDivergenteComp === 'boolean') {
           resultadoFinal.nomeDivergente = nomeDivergenteComp;
         }
+        // Comprovante em nome de terceiro com endereço OK: status analise_manual (não aprovado nem rejeitado)
+        const statusDoc = aprovado && tipoDoc === 'comprovante' && nomeDivergenteComp === true
+          ? 'analise_manual'
+          : aprovado ? 'aprovado' : 'rejeitado';
         await updateStatus(tipoDoc, {
           url: fileKeys[tipoDoc] ?? docAtual[tipoDoc as keyof DocumentosMap]?.url,
-          status: aprovado ? 'aprovado' : 'rejeitado',
+          status: statusDoc,
           tentativas: tentativasAnterior + 1,
           resultado: resultadoFinal,
           atualizadoEm: new Date().toISOString(),
@@ -285,11 +292,14 @@ async function executarPipeline(
     (t) => todosDocs[t]?.status === 'rejeitado'
   );
   const todosAprovados = statusDocs.every(
-    (t) => todosDocs[t]?.status === 'aprovado'
+    (t) => todosDocs[t]?.status === 'aprovado' || todosDocs[t]?.status === 'analise_manual'
+  );
+  const algumAnaliseManual = statusDocs.some(
+    (t) => todosDocs[t]?.status === 'analise_manual'
   );
 
   let statusDocumentos: string;
-  if (todosAprovados && !algumRejeitado && !divergenciaIdentidade && validacaoIA.comprovanteNomeDivergente === true) {
+  if (todosAprovados && !algumRejeitado && !divergenciaIdentidade && (validacaoIA.comprovanteNomeDivergente === true || algumAnaliseManual)) {
     statusDocumentos = 'ANALISE_MANUAL';
     await sendTelegramAlert(
       `⚠️ *CREDFÁCIL — ANÁLISE MANUAL*\n\nCandidato: \`${cpf}\`\nCódigo: \`${formCode}\`\nMotivo: Comprovante em nome de terceiro`

@@ -1,5 +1,5 @@
 export type TipoDocumento = 'cnh' | 'comprovante' | 'selfie' | 'videoApp' | 'videoVeiculo';
-export type StatusDocumento = 'pendente' | 'enviado' | 'processando' | 'aprovado' | 'rejeitado' | 'erro';
+export type StatusDocumento = 'pendente' | 'enviado' | 'processando' | 'aprovado' | 'rejeitado' | 'erro' | 'analise_manual';
 export type StatusDocumentos = 'AGUARDANDO_DOCUMENTOS' | 'PROCESSANDO' | 'APROVADO' | 'PENDENCIA' | 'ANALISE_MANUAL';
 
 export interface DocumentoInfo {
