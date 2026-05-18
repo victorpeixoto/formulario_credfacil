@@ -68,6 +68,8 @@ async function executarPipeline(
     cep: candidato?.cep ?? '',
   };
 
+  console.log(`[cadastro] nomeCompleto="${cadastro.nomeCompleto}" cpf="${cadastro.cpf}"`);
+
   // Executar validações sequencialmente para evitar rate limit do Gemini
   const DELAY_ENTRE_VALIDACOES_MS = 2000;
   const tarefas: Array<[string, () => Promise<{ aprovado: boolean; motivo: string | null; dadosExtraidos: unknown }>]> = [];
@@ -130,15 +132,20 @@ async function executarPipeline(
         const dados = dadosExtraidos as Record<string, unknown>;
         const cpfCNH = String(dados.cpf ?? '').replace(/\D/g, '');
         const cpfCad = cadastro.cpf.replace(/\D/g, '');
+
+        console.log(`[cruzamento] CNH: nome="${dados.nome}" | cadastro: nome="${cadastro.nomeCompleto}" cpf="${cpfCad}"`);
+
         if (cpfCNH && cpfCNH !== cpfCad) {
           aprovado = false;
           motivo = 'CPF da CNH não confere com o cadastro';
-          console.log(`[cruzamento] CNH rejeitada: CPF cadastro="${cpfCad}" vs CNH="${cpfCNH}"`);
-        } else if (dados.nome && calcularSimilaridade(String(dados.nome), cadastro.nomeCompleto) < 85) {
+          console.log(`[cruzamento] CNH rejeitada: CPF divergente`);
+        } else if (cadastro.nomeCompleto && dados.nome) {
           const sim = calcularSimilaridade(String(dados.nome), cadastro.nomeCompleto);
-          aprovado = false;
-          motivo = 'Nome da CNH não confere com o cadastro';
-          console.log(`[cruzamento] CNH rejeitada: nome cadastro="${cadastro.nomeCompleto}" vs CNH="${dados.nome}" → ${sim}%`);
+          console.log(`[cruzamento] CNH nome: "${dados.nome}" vs "${cadastro.nomeCompleto}" → ${sim}%`);
+          if (sim < 85) {
+            aprovado = false;
+            motivo = 'Nome da CNH não confere com o cadastro';
+          }
         }
       }
 
@@ -168,6 +175,20 @@ async function executarPipeline(
           aprovado = false;
           motivo = `Biometria não confirmada (similaridade: ${dados.similarity.toFixed(1)}%)`;
           console.log(`[cruzamento] Biometria rejeitada: ${dados.similarity.toFixed(1)}%`);
+        }
+      }
+
+      if (aprovado && tipo === 'videoApp') {
+        const dados = dadosExtraidos as Record<string, unknown>;
+        const nomePerfil = String(dados.nomePerfil ?? '').trim();
+
+        if (nomePerfil && cadastro.nomeCompleto) {
+          const sim = calcularSimilaridade(nomePerfil, cadastro.nomeCompleto);
+          console.log(`[cruzamento] videoApp nomePerfil="${nomePerfil}" vs cadastro="${cadastro.nomeCompleto}" → ${sim}%`);
+          if (sim < 85) {
+            aprovado = false;
+            motivo = 'Nome do perfil no app não confere com o cadastro';
+          }
         }
       }
 
@@ -215,6 +236,20 @@ async function executarPipeline(
 
   const validacaoIA = cruzarDados(resultadosParaCruzamento as Parameters<typeof cruzarDados>[0], cadastro);
 
+  // Verificar divergências críticas de identidade no cruzamento final
+  const divergenciaIdentidade =
+    validacaoIA.nomeCadastroConfere === false ||
+    validacaoIA.nomeConfere === false ||
+    validacaoIA.cpfConfere === false;
+
+  if (divergenciaIdentidade) {
+    console.log(`[cruzamento] Divergência de identidade detectada:`, {
+      nomeCadastroConfere: validacaoIA.nomeCadastroConfere,
+      nomeConfere: validacaoIA.nomeConfere,
+      cpfConfere: validacaoIA.cpfConfere,
+    });
+  }
+
   // Rejeitar placa divergente (depende de múltiplas fontes, só pode ser feito no final)
   if (validacaoIA.placaConfere === false) {
     console.log(`[cruzamento] Rejeitando selfie: placa divergente entre fontes`);
@@ -246,9 +281,9 @@ async function executarPipeline(
   );
 
   let statusDocumentos: string;
-  if (todosAprovados && !algumRejeitado) {
+  if (todosAprovados && !algumRejeitado && !divergenciaIdentidade) {
     statusDocumentos = 'APROVADO';
-  } else if (algumRejeitado) {
+  } else if (algumRejeitado || divergenciaIdentidade) {
     const precisaAnalise = statusDocs.some(
       (t) => todosDocs[t]?.status === 'rejeitado' && (todosDocs[t]?.tentativas ?? 0) >= 3
     );
