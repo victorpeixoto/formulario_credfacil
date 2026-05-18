@@ -257,19 +257,22 @@ async function executarPipeline(
 
   // Rejeitar placa divergente (depende de múltiplas fontes, só pode ser feito no final)
   if (validacaoIA.placaConfere === false) {
-    console.log(`[cruzamento] Rejeitando selfie: placa divergente entre fontes`);
-    const docSelfie = docsFinal.selfie;
-    await updateStatus('selfie', {
-      url: docSelfie?.url ?? fileKeys.selfie,
-      status: 'rejeitado',
-      tentativas: docSelfie?.tentativas ?? 0,
-      resultado: {
-        aprovado: false,
-        motivo: 'Placa divergente entre selfie, vídeo do app e vídeo do veículo',
-        dadosExtraidos: docSelfie?.resultado?.dadosExtraidos ?? {},
-      },
-      atualizadoEm: new Date().toISOString(),
-    });
+    console.log(`[cruzamento] Rejeitando selfie, vídeo do app e vídeo do veículo: placa divergente entre fontes`);
+    const motivoPlaca = 'Placa divergente entre selfie, vídeo do app e vídeo do veículo';
+    for (const tipoPlaca of ['selfie', 'videoApp', 'videoVeiculo'] as const) {
+      const docExistente = (docsFinal as Record<string, { url?: string; tentativas?: number; resultado?: { dadosExtraidos?: unknown } } | undefined>)[tipoPlaca];
+      await updateStatus(tipoPlaca, {
+        url: docExistente?.url ?? fileKeys[tipoPlaca],
+        status: 'rejeitado',
+        tentativas: docExistente?.tentativas ?? 0,
+        resultado: {
+          aprovado: false,
+          motivo: motivoPlaca,
+          dadosExtraidos: docExistente?.resultado?.dadosExtraidos ?? {},
+        },
+        atualizadoEm: new Date().toISOString(),
+      });
+    }
   }
 
   // Determinar status final
