@@ -136,10 +136,21 @@ graph TD
 - **Purpose**: Cruzar dados extraídos entre documentos e atualizar validacaoIA
 - **Location**: `lib/ai/cruzamento.ts`
 - **Interfaces**:
-  - `cruzarDados(resultados: ResultadosTodos, cpfFormulario: string): ValidacaoIA` — executa 4 comparações
+  - `cruzarDados(resultados: ResultadosTodos, cadastro: DadosCadastro): ValidacaoIA` — executa comparações cruzadas
   - `calcularSimilaridade(str1: string, str2: string): number` — Levenshtein normalizado 0-100
 - **Dependencies**: Nenhuma externa
 - **Reuses**: Nenhum existente
+
+### Pipeline Modules (refatoração 2026-05-19)
+
+- **Purpose**: Separar responsabilidades do pipeline de validação em módulos coesos
+- **Location**: `lib/ai/pipeline/`
+- **Módulos**:
+  - `config.ts` — constantes de threshold e delay (`THRESHOLD_NOME`, `THRESHOLD_BIOMETRIA`, `DELAY_ENTRE_VALIDACOES_MS`, etc.)
+  - `executar-validacoes.ts` — loop sequencial com retry e delay; recebe callback `onResultado` para atualização de DB
+  - `cruzamento-inline.ts` — cruzamento por tipo de documento logo após cada validação (`cruzarCNH`, `cruzarComprovante`, `cruzarBiometria`, `cruzarVideoApp`); função de entrada `aplicarCruzamentoInline`
+  - `determinar-status.ts` — decide `APROVADO / PENDENCIA / ANALISE_MANUAL` a partir dos documentos e `validacaoIA`
+- **Dependencies**: `lib/ai/cruzamento.ts`, `types/documentos.ts`
 
 ### Email Service
 

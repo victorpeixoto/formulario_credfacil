@@ -1,13 +1,13 @@
 # State
 
-**Last updated:** 2026-05-18
-**Session:** Implementação e deploy do fix do bug crítico de nomes divergentes (ClickUp `86ahg6bqq`)
+**Last updated:** 2026-05-19
+**Session:** Refatoração do pipeline de validação — modularização em `lib/ai/pipeline/`
 
 ---
 
 ## Current Focus
 
-Feature "Portal do Cliente" — implementada e commitada na branch `feature/validacao-documentos-ia`. Testes E2E pendentes.
+Refatoração do pipeline concluída (T42–T46). Feature "validacao-documentos-ia" na branch `feature/validacao-documentos-ia`.
 
 **BUG CRÍTICO RESOLVIDO** — `[BUG] IA aprovou cadastro com nomes divergentes entre aplicativo e documentos` (ClickUp `86ahg6bqq`).  
 Fix implementado, commitado (`6648b48`), pushed e task marcada como `complete` no ClickUp.
@@ -19,6 +19,15 @@ Fix implementado, commitado (`6648b48`), pushed e task marcada como `complete` n
 - Próximo passo: merge para master após validação
 
 ## Recent Decisions
+
+- **2026-05-19:** Refatoração do pipeline de validação — modularização em `lib/ai/pipeline/` (T42–T46)
+  - Problema: `executarPipeline` em `route.ts` (~300 linhas) misturava loop com retry, cruzamento inline por documento, e lógica de status final
+  - Solução: 4 módulos criados + `route.ts` reescrito como orquestrador de ~130 linhas
+  - `config.ts` — constantes de threshold centralizadas (THRESHOLD_NOME=85, THRESHOLD_BIOMETRIA=90, etc.)
+  - `executar-validacoes.ts` — loop sequencial com retry, delay e callback
+  - `cruzamento-inline.ts` — cruzamento por tipo (CNH, comprovante, biometria, videoApp) com funções nomeadas
+  - `determinar-status.ts` — decisão APROVADO/PENDENCIA/ANALISE_MANUAL isolada e testável
+  - Comportamento externo preservado: mesmo MongoDB, mesmos SSE, mesmos alertas Telegram
 
 - **2026-05-18:** Bug crítico implementado e deployado — commit `6648b48`
   - T1: log diagnóstico de `cadastro.nomeCompleto` no início do pipeline

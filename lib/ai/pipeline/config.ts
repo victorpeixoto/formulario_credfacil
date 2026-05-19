@@ -1,0 +1,9 @@
+export const DELAY_ENTRE_VALIDACOES_MS = 2000;
+
+export const THRESHOLD_NOME = 85;
+export const THRESHOLD_ENDERECO = 0.7;
+export const THRESHOLD_BIOMETRIA = 90;
+export const THRESHOLD_BIOMETRIA_MANUAL = 80;
+
+export const PRAZO_COMPROVANTE_DIAS = 90;
+export const MAX_TENTATIVAS_ANTES_MANUAL = 3;

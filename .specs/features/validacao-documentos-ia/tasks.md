@@ -1067,6 +1067,126 @@ Phase 6 (Sequential):
 
 ---
 
+## Refatoração: Pipeline modularizado (2026-05-19)
+
+Tasks T42–T45 extraem responsabilidades da função `executarPipeline` (300 linhas) para módulos coesos em `lib/ai/pipeline/`. Comportamento externo preservado.
+
+### Execution Plan (T42–T45)
+
+```
+T42 → T43 → T44 → T45 (sequencial — cada módulo depende do anterior para integração)
+```
+
+---
+
+### T42: Criar `lib/ai/pipeline/config.ts`
+
+**What**: Extrair todas as constantes de threshold, delay e regras para um único arquivo de configuração.  
+**Where**: `lib/ai/pipeline/config.ts` (novo)  
+**Depends on**: Nenhuma  
+
+**Constantes**:
+```ts
+DELAY_ENTRE_VALIDACOES_MS = 2000
+THRESHOLD_NOME = 85
+THRESHOLD_ENDERECO = 0.7
+THRESHOLD_BIOMETRIA = 90
+THRESHOLD_BIOMETRIA_MANUAL = 80
+PRAZO_COMPROVANTE_DIAS = 90
+MAX_TENTATIVAS_ANTES_MANUAL = 3
+```
+
+**Done when**:
+- [x] Arquivo criado com todas as constantes exportadas
+- [x] Zero erros TypeScript
+
+---
+
+### T43: Criar `lib/ai/pipeline/executar-validacoes.ts`
+
+**What**: Isolar loop de execução sequencial com retry, delay e logging em módulo próprio.  
+**Where**: `lib/ai/pipeline/executar-validacoes.ts` (novo)  
+**Depends on**: T42  
+
+**Interface pública**:
+```ts
+executarValidacoes(
+  tarefas: TarefaValidacao[],
+  onResultado: (tipo, resultado) => Promise<ResultadoTarefa>
+): Promise<Map<string, ResultadoTarefa>>
+```
+
+**Done when**:
+- [x] Loop com retry e delay implementado
+- [x] Callback `onResultado` chamado por tipo
+- [x] Erros de execução logados sem propagar (não quebra o pipeline)
+- [x] Zero erros TypeScript
+
+---
+
+### T44: Criar `lib/ai/pipeline/cruzamento-inline.ts`
+
+**What**: Extrair lógica de cruzamento por documento (CNH, comprovante, biometria, videoApp) para módulo dedicado.  
+**Where**: `lib/ai/pipeline/cruzamento-inline.ts` (novo)  
+**Depends on**: T42  
+
+**Funções**:
+- `cruzarCNH(resultado, cadastro)` — verifica CPF e nome
+- `cruzarComprovante(resultado, cadastro)` — verifica endereço (70% dos campos)
+- `cruzarBiometria(resultado)` — verifica similarity >= 90
+- `cruzarVideoApp(resultado, cadastro)` — verifica nomePerfil vs cadastro
+- `aplicarCruzamentoInline(tipo, resultado, cadastro)` — dispatcher
+
+**Done when**:
+- [x] Cada função retorna `ResultadoTarefa` com `aprovado`/`motivo` atualizados
+- [x] Usa constantes de `config.ts`
+- [x] Zero erros TypeScript
+
+---
+
+### T45: Criar `lib/ai/pipeline/determinar-status.ts`
+
+**What**: Isolar lógica de determinação do status final (`APROVADO / PENDENCIA / ANALISE_MANUAL`) em módulo testável.  
+**Where**: `lib/ai/pipeline/determinar-status.ts` (novo)  
+**Depends on**: T42  
+
+**Interface pública**:
+```ts
+determinarStatusFinal(
+  docs: DocumentosMap,
+  validacaoIA: ValidacaoIA
+): { status: StatusDocumentos; motivoManual?: string }
+```
+
+**Done when**:
+- [x] Retorna `APROVADO` quando todos aprovados sem divergência
+- [x] Retorna `ANALISE_MANUAL` com `motivoManual` quando comprovante de terceiro ou 3+ tentativas
+- [x] Retorna `PENDENCIA` nos demais casos de rejeição
+- [x] Zero erros TypeScript
+
+---
+
+### T46: Refatorar `app/api/validacao/iniciar/route.ts`
+
+**What**: Reescrever `executarPipeline` para orquestrar usando os 4 módulos de `lib/ai/pipeline/`. Reduzir de ~300 para ~130 linhas.  
+**Where**: `app/api/validacao/iniciar/route.ts`  
+**Depends on**: T43, T44, T45  
+
+**Mudanças**:
+- Importar e usar `executarValidacoes`, `aplicarCruzamentoInline`, `determinarStatusFinal`
+- Remover bloco inline de cruzamento (linhas 131–197 originais) — movido para `cruzamento-inline.ts`
+- Remover lógica de status final — movida para `determinar-status.ts`
+- Função principal vira orquestrador de ~130 linhas
+
+**Comportamento preservado**: mesmos status no MongoDB, mesmos eventos SSE, mesmos alertas Telegram.
+
+**Done when**:
+- [x] `executarPipeline` orquestra sem conter lógica de negócio inline
+- [x] Comportamento externo idêntico ao anterior
+- [x] Zero erros TypeScript: `npx tsc --noEmit`
+
+---
+
 ## Refatoração: Consolidação validacao-documentos-ia (spec 2026-05-18)
 
 Tasks T36–T41 implementam os gaps G1–G6 identificados no spec. As tasks T1–T35 são o histórico de criação da feature — não modificar.
