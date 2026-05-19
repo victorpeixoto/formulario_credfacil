@@ -1,6 +1,7 @@
 'use client';
 
 import { ReactNode } from 'react';
+import { useAcaoUnica } from '@/lib/hooks/use-acao-unica';
 
 interface PassoWizardProps {
   passoAtual: number;
@@ -20,16 +21,18 @@ export default function PassoWizard({
   children,
 }: PassoWizardProps) {
   const progresso = (passoAtual / totalPassos) * 100;
+  const acaoVoltar = useAcaoUnica();
 
   return (
     <main className="flex-1 w-full bg-white flex flex-col px-6 py-6 max-w-md mx-auto gap-5">
       <div className="flex items-center gap-3">
         {onVoltar && (
           <button
-            onClick={onVoltar}
+            onClick={() => acaoVoltar.executar(onVoltar)}
+            disabled={acaoVoltar.executando}
             type="button"
             aria-label="Voltar"
-            className="w-9 h-9 -ml-1 rounded-full flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all"
+            className="w-9 h-9 -ml-1 rounded-full flex items-center justify-center hover:bg-gray-100 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <svg className="w-5 h-5 text-gray-700" fill="none" viewBox="0 0 24 24">
               <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />

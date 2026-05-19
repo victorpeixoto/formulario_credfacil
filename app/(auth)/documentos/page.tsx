@@ -7,6 +7,8 @@ import PassoWizard from '@/components/captura/passo-wizard';
 import CapturaDocumento from '@/components/captura/captura-documento';
 import CapturaSelfie from '@/components/captura/captura-selfie';
 import CapturaVideo from '@/components/captura/captura-video';
+import { BotaoPrincipal } from '@/components/ui/botao-principal';
+import { useAcaoUnica } from '@/lib/hooks/use-acao-unica';
 
 type ModoCaptura = 'documento-cnh' | 'documento-comprovante' | 'selfie' | 'videoApp' | 'videoVeiculo' | null;
 
@@ -56,6 +58,12 @@ export default function PageDocumentos() {
   const [modoCaptura, setModoCaptura] = useState<ModoCaptura>(null);
   const [enviandoPipeline, setEnviandoPipeline] = useState(false);
   const [erroUpload, setErroUpload] = useState<string | null>(null);
+
+  const acaoAbrirCaptura = useAcaoUnica();
+  const acaoContinuar = useAcaoUnica();
+  const acaoRefazer = useAcaoUnica();
+  const acaoEnviarAnalise = useAcaoUnica(0);
+  const acaoRefazerResumo = useAcaoUnica();
 
   // Verificar se já tem documentos — se sim, redirecionar para o portal
   useEffect(() => {
@@ -186,13 +194,17 @@ export default function PageDocumentos() {
                   <p className="text-xs text-green-500">✓ Enviado</p>
                 </div>
                 <button
-                  onClick={() => {
-                    setEnviados((prev) => ({ ...prev, [tipo]: undefined }));
-                    setPasso(ORDEM.indexOf(tipo));
-                  }}
-                  className="text-xs text-blue-500 hover:underline"
+                  type="button"
+                  disabled={acaoRefazerResumo.executando}
+                  onClick={() =>
+                    acaoRefazerResumo.executar(() => {
+                      setEnviados((prev) => ({ ...prev, [tipo]: undefined }));
+                      setPasso(ORDEM.indexOf(tipo));
+                    })
+                  }
+                  className="text-xs text-blue-500 hover:underline disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  Refazer
+                  {acaoRefazerResumo.executando ? 'Resetando...' : 'Refazer'}
                 </button>
               </div>
             );
@@ -202,13 +214,14 @@ export default function PageDocumentos() {
         {erroUpload && <p className="text-red-500 text-sm mt-3">{erroUpload}</p>}
 
         <div className="mt-auto flex flex-col gap-3 pt-6">
-          <button
-            onClick={enviarParaAnalise}
-            disabled={!todosCompletos || enviandoPipeline}
-            className="w-full py-4 rounded-2xl bg-green-500 hover:bg-green-600 active:scale-95 text-white font-semibold text-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+          <BotaoPrincipal
+            executando={enviandoPipeline || acaoEnviarAnalise.executando}
+            textoExecutando="Iniciando análise..."
+            disabled={!todosCompletos}
+            onClick={() => acaoEnviarAnalise.executar(enviarParaAnalise)}
           >
-            {enviandoPipeline ? 'Iniciando análise...' : 'Enviar para análise'}
-          </button>
+            Enviar para análise
+          </BotaoPrincipal>
         </div>
       </PassoWizard>
     );
@@ -287,31 +300,42 @@ export default function PageDocumentos() {
 
           <div className="flex flex-col gap-3 mt-auto pt-6">
             {!itemAtual?.fileKey && (
-              <button
-                onClick={() => abrirCapturaPara(tipoAtual)}
-                className="w-full py-4 rounded-2xl bg-green-500 hover:bg-green-600 active:scale-95 text-white font-semibold text-lg transition-all"
+              <BotaoPrincipal
+                executando={acaoAbrirCaptura.executando}
+                textoExecutando="Abrindo..."
+                onClick={() => acaoAbrirCaptura.executar(() => abrirCapturaPara(tipoAtual))}
               >
                 {tipoAtual.startsWith('video') ? 'Continuar' : tipoAtual === 'selfie' ? 'Abrir câmera' : 'Enviar documento'}
-              </button>
+              </BotaoPrincipal>
             )}
 
             {itemAtual?.fileKey && !itemAtual.enviando && (
               <>
-                <button
-                  onClick={() => setPasso(passo + 1)}
-                  className="w-full py-4 rounded-2xl bg-green-500 hover:bg-green-600 active:scale-95 text-white font-semibold text-lg transition-all"
+                <BotaoPrincipal
+                  executando={acaoContinuar.executando}
+                  textoExecutando="Avançando..."
+                  onClick={() =>
+                    acaoContinuar.executar(() =>
+                      setPasso((p) => (p === passo ? p + 1 : p))
+                    )
+                  }
                 >
                   Continuar
-                </button>
-                <button
-                  onClick={() => {
-                    setEnviados((prev) => ({ ...prev, [tipoAtual]: undefined }));
-                    abrirCapturaPara(tipoAtual);
-                  }}
-                  className="w-full py-3 rounded-2xl text-gray-500 font-medium text-sm hover:bg-gray-50 active:scale-95 transition-all"
+                </BotaoPrincipal>
+                <BotaoPrincipal
+                  variante="cinza"
+                  executando={acaoRefazer.executando}
+                  textoExecutando="Resetando..."
+                  onClick={() =>
+                    acaoRefazer.executar(() => {
+                      setEnviados((prev) => ({ ...prev, [tipoAtual]: undefined }));
+                      abrirCapturaPara(tipoAtual);
+                    })
+                  }
+                  className="py-3 text-sm font-medium"
                 >
                   Refazer
-                </button>
+                </BotaoPrincipal>
               </>
             )}
           </div>
