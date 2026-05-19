@@ -3,17 +3,26 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
+import type { StatusDocumentos } from '@/types/documentos';
 
-const ABAS = [
-  { href: '/documentos', label: 'Documentos' },
+const ABAS_BASE = [
   { href: '/status', label: 'Status' },
   { href: '/meus-dados', label: 'Meus dados' },
 ];
 
-export default function NavHeader() {
+interface NavHeaderProps {
+  statusDocumentos: StatusDocumentos;
+}
+
+export default function NavHeader({ statusDocumentos }: NavHeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [saindo, setSaindo] = useState(false);
+
+  const abas =
+    statusDocumentos === 'AGUARDANDO_DOCUMENTOS'
+      ? [{ href: '/documentos', label: 'Documentos' }, ...ABAS_BASE]
+      : ABAS_BASE;
 
   async function sair() {
     setSaindo(true);
@@ -41,7 +50,7 @@ export default function NavHeader() {
         </button>
       </div>
       <nav className="max-w-md mx-auto px-4 flex gap-1 overflow-x-auto">
-        {ABAS.map((a) => {
+        {abas.map((a) => {
           const ativo = pathname === a.href || pathname?.startsWith(a.href + '/');
           return (
             <Link
