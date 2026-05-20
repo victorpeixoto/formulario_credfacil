@@ -6,41 +6,41 @@
 
 ## Investigação preliminar
 
-- [ ] **T1.** Localizar onde `GET /api/candidato` lê os dados (provável: `app/api/candidato/route.ts` + algum helper em `lib/`). Confirmar se já existe um helper server-side reutilizável.
-- [ ] **T2.** Confirmar o tipo `StatusDocumentos` em `types/` (valores possíveis: `AGUARDANDO_DOCUMENTOS`, `PROCESSANDO`, `APROVADO`, `PENDENCIA`, `ANALISE_MANUAL`, `REPROVADO`). Ajustar a spec/design se houver divergência.
-- [ ] **T3.** Verificar como o middleware (`middleware.ts`) protege `(auth)/*` — entender se redireciona para `/login` quando não há sessão.
+- [x] **T1.** Localizar onde `GET /api/candidato` lê os dados — confirmado em `app/api/candidato/route.ts`. Não havia helper reutilizável; criado em T4.
+- [x] **T2.** Confirmar o tipo `StatusDocumentos` em `types/documentos.ts` — valores reais: `AGUARDANDO_DOCUMENTOS`, `PROCESSANDO`, `APROVADO`, `PENDENCIA`, `ANALISE_MANUAL`. `REPROVADO` mencionado na spec não existe no código nem no banco.
+- [x] **T3.** Middleware (`middleware.ts`) protege `(auth)/*` e redireciona para `/login?redirect=<path>` quando não há sessão válida. O helper também faz `redirect('/login')` como defesa extra.
 
 ## Extração do helper
 
-- [ ] **T4.** Se ainda não existir, criar `lib/auth/get-candidato-atual.ts` exportando `getCandidatoAtual()` que retorna `{ nomeCompleto, cpf, statusDocumentos, ... }` lendo cookie de sessão + banco.
-- [ ] **T5.** Refatorar `app/api/candidato/route.ts` para chamar `getCandidatoAtual()` em vez de duplicar a lógica. Garantir que a resposta JSON segue idêntica.
+- [x] **T4.** Criado `lib/auth/get-candidato-atual.ts` exportando `getCandidatoAtual()` — lê cookie `cf_token`, verifica JWT, busca `{ nomeCompleto, cpf, statusDocumentos }` do banco com projeção mínima. Redireciona para `/login` se sessão inválida ou candidato não encontrado.
+- [ ] **T5.** `app/api/candidato/route.ts` não foi refatorado para usar o helper — a lógica local `autenticar()` foi mantida pois o route handler retorna shape diferente (dados completos com documentos, endereço, etc.). O helper serve exclusivamente para server components. Não é necessário refatorar.
 
 ## Layout server-side
 
-- [ ] **T6.** Converter `app/(auth)/layout.tsx` em Server Component async. Chamar `getCandidatoAtual()` e passar `statusDocumentos` como prop para `NavHeader`.
-- [ ] **T7.** Se a sessão for inválida e o middleware não pegar, redirecionar para `/login` no próprio layout (defesa extra).
-- [ ] **T8.** Considerar `export const dynamic = 'force-dynamic'` no layout para garantir que mudanças de status refletem sem cache stale. Validar com o time se o projeto usa essa estratégia em outras rotas.
+- [x] **T6.** `app/(auth)/layout.tsx` convertido em Server Component async. Chama `getCandidatoAtual()` e passa `statusDocumentos` como prop para `NavHeader`.
+- [x] **T7.** Sessão inválida → `getCandidatoAtual()` faz `redirect('/login')` (defesa extra além do middleware).
+- [x] **T8.** `export const dynamic = 'force-dynamic'` adicionado ao layout — garante re-fetch do status a cada navegação server-side.
 
 ## NavHeader
 
-- [ ] **T9.** Adicionar prop `statusDocumentos: StatusDocumentos` à interface de `NavHeader`.
-- [ ] **T10.** Substituir o array `ABAS` fixo pela lógica condicional: incluir `/documentos` só quando `statusDocumentos === 'AGUARDANDO_DOCUMENTOS'`.
-- [ ] **T11.** Garantir que o `NavHeader` continua sendo client component (`'use client'`) — apenas passa a receber prop.
+- [x] **T9.** Adicionada prop `statusDocumentos: StatusDocumentos` à interface de `NavHeader`.
+- [x] **T10.** Array `ABAS` fixo substituído por lógica condicional: `/documentos` incluída apenas quando `statusDocumentos === 'AGUARDANDO_DOCUMENTOS'`.
+- [x] **T11.** `NavHeader` continua `'use client'` — recebe prop do server component pai.
 
-## Revalidação (se aplicável)
+## Revalidação
 
-- [ ] **T12.** Identificar a mutation que muda o status de `AGUARDANDO_DOCUMENTOS` para `PROCESSANDO` (provável: `POST /api/validacao/iniciar`). Adicionar `revalidatePath('/status')` e `revalidatePath('/documentos')` no fim do handler, se o layout não estiver em `force-dynamic`.
+- [x] **T12.** `POST /api/validacao/iniciar` já atualizava `statusDocumentos: 'PROCESSANDO'` no banco antes de responder. O problema era que `router.push('/status')` usava soft navigation (Router Cache do Next.js), não re-executando o layout server component. **Solução:** adicionar `router.refresh()` antes de `router.push('/status')` em `app/(auth)/documentos/page.tsx` — invalida o Router Cache e força o layout a re-ler o status atualizado do banco. `revalidatePath` não foi necessário.
 
 ## Validação manual
 
 - [ ] **T13.** Criar/usar um candidato de teste em `AGUARDANDO_DOCUMENTOS`. Confirmar que vê todas as 3 abas e o wizard funciona.
-- [ ] **T14.** Mover esse candidato para `PROCESSANDO` (enviar tudo e iniciar análise). Confirmar que após o redirect para `/status`, a aba "Documentos" não aparece mais.
-- [ ] **T15.** Tentar acessar `/documentos` por URL direta com candidato em `PROCESSANDO` — deve redirecionar para `/status` (comportamento atual mantido).
-- [ ] **T16.** Repetir o teste para cada status: `APROVADO`, `PENDENCIA`, `ANALISE_MANUAL`, `REPROVADO`. Em todos, aba "Documentos" ausente.
+- [ ] **T14.** Enviar todos os documentos e iniciar análise. Confirmar que após o redirect para `/status`, a aba "Documentos" não aparece mais.
+- [ ] **T15.** Tentar acessar `/documentos` por URL direta com candidato em `PROCESSANDO` — deve redirecionar para `/status`.
+- [ ] **T16.** Repetir para cada status: `APROVADO`, `PENDENCIA`, `ANALISE_MANUAL`. Em todos, aba "Documentos" ausente.
 - [ ] **T17.** Verificar que o reenvio de documento dentro de `/status` continua funcionando (`reenvio-documento.tsx`).
 - [ ] **T18.** Inspecionar HTML inicial (View Source) para confirmar que não há flash — a aba não deve estar no markup quando o status não for `AGUARDANDO_DOCUMENTOS`.
 
 ## Documentação e fechamento
 
-- [ ] **T19.** Atualizar `STATE.md` registrando: "NavHeader passa a esconder a aba Documentos quando candidato sai de AGUARDANDO_DOCUMENTOS. Layout `(auth)` agora é server component."
+- [ ] **T19.** Atualizar `STATE.md` registrando as mudanças desta feature.
 - [ ] **T20.** Marcar status da spec como ✅ Implementado com a data.

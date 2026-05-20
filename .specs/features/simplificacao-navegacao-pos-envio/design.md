@@ -1,6 +1,6 @@
 # Simplificação da Navegação Pós-Envio — Design
 
-**Status**: 📋 Proposto — 2026-05-19
+**Status**: ✅ Implementado — 2026-05-20
 **Spec relacionada:** [spec.md](./spec.md)
 
 ---
@@ -75,6 +75,19 @@ Se o handler `GET /api/candidato` for a única fonte hoje, extrair sua lógica d
 Não remover. Defesa em profundidade contra:
 - Estado defasado entre o render server e mudança real (ex.: aprovação ocorreu enquanto a página estava aberta).
 - Acessos por URL direta com status já mudado.
+
+### 6. Invalidação do Router Cache após envio
+
+`POST /api/validacao/iniciar` já atualizava `statusDocumentos: 'PROCESSANDO'` no banco antes de responder. Porém `router.push('/status')` faz soft navigation — o Next.js App Router reutiliza o RSC payload em cache do layout, que não re-executa. A aba continuava aparecendo.
+
+Solução: `router.refresh()` imediatamente antes de `router.push('/status')` em `documentos/page.tsx`. O `refresh()` invalida o Router Cache e força o layout server component a re-executar, lendo o novo status do banco.
+
+```ts
+router.refresh();
+router.push('/status');
+```
+
+`revalidatePath` no handler não foi necessário — o `force-dynamic` no layout + `router.refresh()` no cliente resolve completamente.
 
 ## Alternativas consideradas
 

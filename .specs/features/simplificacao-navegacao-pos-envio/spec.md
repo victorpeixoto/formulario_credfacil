@@ -1,6 +1,6 @@
 # Simplificação da Navegação Pós-Envio de Documentos — Specification
 
-**Status**: 📋 Especificado — 2026-05-19
+**Status**: 🚧 Implementado (validação manual pendente) — 2026-05-20
 
 ---
 
