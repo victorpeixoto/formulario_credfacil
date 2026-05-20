@@ -26,13 +26,14 @@ export function BotaoPrincipal({
   className = '',
 }: BotaoPrincipalProps) {
   const base =
-    'w-full py-4 rounded-2xl font-semibold text-lg transition-all active:scale-95 flex items-center justify-center gap-2';
+    'w-full py-4 rounded-2xl font-semibold text-lg transition-all active:scale-95 flex items-center justify-center gap-2 touch-manipulation';
   const cores =
     variante === 'verde'
       ? 'bg-green-500 hover:bg-green-600 text-white'
       : 'text-gray-500 hover:bg-gray-50';
+  // pointer-events-none é necessário no iOS Safari: disabled não bloqueia touchstart nativamente
   const desabilitado =
-    'disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100';
+    'disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100 disabled:pointer-events-none';
 
   return (
     <button

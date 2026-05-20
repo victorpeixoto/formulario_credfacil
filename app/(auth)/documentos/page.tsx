@@ -203,7 +203,7 @@ export default function PageDocumentos() {
                       setPasso(ORDEM.indexOf(tipo));
                     })
                   }
-                  className="text-xs text-blue-500 hover:underline disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="text-xs text-blue-500 hover:underline disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none touch-manipulation"
                 >
                   {acaoRefazerResumo.executando ? 'Resetando...' : 'Refazer'}
                 </button>
