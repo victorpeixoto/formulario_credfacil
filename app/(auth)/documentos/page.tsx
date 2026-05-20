@@ -146,6 +146,7 @@ export default function PageDocumentos() {
         body: JSON.stringify({ documentos }),
       });
       if (!res.ok) throw new Error('Erro ao iniciar validação');
+      router.refresh();
       router.push('/status');
     } catch (err) {
       console.error('[documentos] iniciar erro:', err);
