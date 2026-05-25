@@ -22,7 +22,7 @@ ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends curl \
+  && apt-get install -y --no-install-recommends curl wget \
   && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd --system --gid 1001 nodejs \
