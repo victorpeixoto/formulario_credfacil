@@ -20,6 +20,12 @@ Fix implementado, commitado (`6648b48`), pushed e task marcada como `complete` n
 
 ## Recent Decisions
 
+- **2026-05-24:** Migração Coolify VPS planejada e preparada para execução local
+  - Deploy shape: Next.js standalone monolith in Coolify
+  - Backend/frontend split intentionally deferred
+  - Rollback: Vercel remains fallback until production validation completes
+  - Spec: `.specs/features/migracao-coolify-vps/`
+
 - **2026-05-19:** Refatoração do pipeline de validação — modularização em `lib/ai/pipeline/` (T42–T46)
   - Problema: `executarPipeline` em `route.ts` (~300 linhas) misturava loop com retry, cruzamento inline por documento, e lógica de status final
   - Solução: 4 módulos criados + `route.ts` reescrito como orquestrador de ~130 linhas
