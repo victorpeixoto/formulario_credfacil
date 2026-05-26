@@ -279,7 +279,7 @@ export interface ResultadoVideoVeiculo {
 ```javascript
 {
   // --- existentes (não mudam) ---
-  cpf, nomeCompleto, email, trabalho, referencias, formCode, contactId, ...
+  cpf, nomeCompleto, email, trabalho, formCode, contactId, ...
 
   // --- autenticação ---
   senhaHash: String,           // bcrypt

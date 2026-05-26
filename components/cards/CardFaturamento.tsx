@@ -4,20 +4,22 @@ import BotaoAvancar from '@/components/BotaoAvancar';
 import type { FaixaFaturamento } from '@/types/formulario';
 
 const OPCOES: { valor: FaixaFaturamento; label: string }[] = [
-  { valor: 'menos_2k', label: 'Menos de R$ 2.000' },
-  { valor: '2k_3500', label: 'Entre R$ 2.000 e R$ 3.500' },
-  { valor: '3500_5k', label: 'Entre R$ 3.500 e R$ 5.000' },
-  { valor: 'mais_5k', label: 'Mais de R$ 5.000' },
+  { valor: 'ate_1k', label: 'Até R$ 1.000' },
+  { valor: '1k_2k', label: 'De R$ 1.000 a R$ 2.000' },
+  { valor: '2k_3500', label: 'De R$ 2.000 a R$ 3.499' },
+  { valor: 'mais_3500', label: 'Acima de R$ 3.500' },
 ];
 
 interface Props {
   valor: FaixaFaturamento | null;
   onChange: (v: FaixaFaturamento) => void;
+  ciente: boolean;
+  onCienteChange: (v: boolean) => void;
   onAvancar: () => void;
   onVoltar?: () => void;
 }
 
-export default function CardFaturamento({ valor, onChange, onAvancar, onVoltar }: Props) {
+export default function CardFaturamento({ valor, onChange, ciente, onCienteChange, onAvancar, onVoltar }: Props) {
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -41,7 +43,26 @@ export default function CardFaturamento({ valor, onChange, onAvancar, onVoltar }
         ))}
       </div>
 
-      <BotaoAvancar onClick={onAvancar} disabled={valor === null} onVoltar={onVoltar} />
+      <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
+        <p className="text-orange-800 text-xs font-medium leading-relaxed">
+          Atenção: esta informação é de extrema importância para a análise.
+          Informações falsas ou inconsistentes resultam em desclassificação automática do pedido.
+        </p>
+      </div>
+
+      <label className="flex items-start gap-3 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={ciente}
+          onChange={(e) => onCienteChange(e.target.checked)}
+          className="mt-1 w-5 h-5 accent-green-500 cursor-pointer"
+        />
+        <span className="text-sm text-gray-700 leading-relaxed">
+          Estou ciente de que declarar renda falsa resulta em desclassificação e confirmo que o valor informado é verdadeiro.
+        </span>
+      </label>
+
+      <BotaoAvancar onClick={onAvancar} disabled={valor === null || !ciente} onVoltar={onVoltar} />
     </div>
   );
 }

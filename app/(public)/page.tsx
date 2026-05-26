@@ -8,7 +8,6 @@ import CardApps from '@/components/cards/CardApps';
 import CardTempo from '@/components/cards/CardTempo';
 import CardUltimaEntrega from '@/components/cards/CardUltimaEntrega';
 import CardFaturamento from '@/components/cards/CardFaturamento';
-import CardReferencias from '@/components/cards/CardReferencias';
 import CardDadosPessoais from '@/components/cards/CardDadosPessoais';
 import CardAceite from '@/components/cards/CardAceite';
 import CardApresentacao from '@/components/CardApresentacao';
@@ -19,14 +18,13 @@ import { track } from '@vercel/analytics';
 import { useEffect, useState } from 'react';
 
 const DRAFT_KEY = 'cf_draft';
-const TOTAL_CARDS = 7;
+const TOTAL_CARDS = 6;
 
 const estadoInicial: EstadoFormulario = {
   apps: [],
   tempoAtuacao: null,
   ultimaEntrega: null,
   faturamento: null,
-  referencias: [],
   nomeCompleto: '',
   cpf: '',
   email: '',
@@ -50,6 +48,7 @@ export default function Home() {
   const [mostrarBanner, setMostrarBanner] = useState(false);
   const [rascunhoSalvo, setRascunhoSalvo] = useState<{ card: number; estado: EstadoFormulario } | null>(null);
   const [cpfExistenteErro, setCpfExistenteErro] = useState<string | undefined>(undefined);
+  const [cienteFaturamento, setCienteFaturamento] = useState(false);
 
   useEffect(() => {
     try {
@@ -128,7 +127,6 @@ export default function Home() {
           ultimaCorridaData: estado.ultimaEntrega,
           faturamentoBruto: estado.faturamento,
         },
-        referencias: estado.referencias,
         nomeCompleto: estado.nomeCompleto,
         cpf: estado.cpf.replace(/\D/g, ''),
         email: estado.email,
@@ -318,14 +316,16 @@ export default function Home() {
             <CardFaturamento
               valor={estado.faturamento}
               onChange={(v) => setEstado((e) => ({ ...e, faturamento: v }))}
+              ciente={cienteFaturamento}
+              onCienteChange={setCienteFaturamento}
               onAvancar={avaliarEAvancar}
               onVoltar={voltar}
             />
           )}
           {card === 5 && (
-            <CardReferencias
-              valor={estado.referencias}
-              onChange={(refs) => setEstado((e) => ({ ...e, referencias: refs }))}
+            <CardAceite
+              aceito={estado.aceitouCondicoes}
+              onChange={(v) => setEstado((e) => ({ ...e, aceitouCondicoes: v }))}
               onAvancar={avancar}
               onVoltar={voltar}
             />
@@ -343,16 +343,9 @@ export default function Home() {
               cidade={estado.cidade}
               estadoUF={estado.estadoUF}
               onChange={atualizarCampo}
-              onAvancar={avancar}
-              onVoltar={voltar}
-            />
-          )}
-          {card === 7 && (
-            <CardAceite
-              aceito={estado.aceitouCondicoes}
-              onChange={(v) => setEstado((e) => ({ ...e, aceitouCondicoes: v }))}
               onAvancar={enviar}
               loading={loading}
+              label="Enviar solicitação"
               onVoltar={voltar}
             />
           )}

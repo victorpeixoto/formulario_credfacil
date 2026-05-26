@@ -8,7 +8,7 @@
 formulario-credfacil/
 ├── .specs/                     # Spec-driven docs (este projeto)
 ├── app/
-│   ├── page.tsx                # Formulário principal (8 cards)
+│   ├── page.tsx                # Formulário principal (6 cards)
 │   ├── layout.tsx              # Layout raiz (meta, analytics, pixel)
 │   ├── globals.css             # Estilos globais Tailwind
 │   ├── aprovado/
@@ -31,9 +31,8 @@ formulario-credfacil/
 │       ├── CardTempo.tsx       # Card 2: tempo de atuação
 │       ├── CardUltimaEntrega.tsx # Card 3: última entrega
 │       ├── CardFaturamento.tsx # Card 4: faturamento mensal
-│       ├── CardReferencias.tsx # Card 5: 4 referências pessoais
-│       ├── CardDadosPessoais.tsx # Card 6: dados pessoais + endereço
-│       ├── CardAceite.tsx      # Card 7: aceite das condições
+│       ├── CardAceite.tsx      # Card 5: aceite das condições
+│       ├── CardDadosPessoais.tsx # Card 6: dados pessoais + endereço (submit)
 │       └── CardCPFExistente.tsx # Fluxo paralelo: CPF já cadastrado
 ├── lib/
 │   ├── mongodb.ts              # Singleton de conexão MongoDB

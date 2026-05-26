@@ -4,13 +4,7 @@ export type TempoAtuacao = 'menos_3m' | '3_6m' | '6_12m' | 'mais_1ano';
 
 export type UltimaEntrega = 'hoje' | 'esta_semana' | '8_30_dias' | 'mais_30_dias';
 
-export type FaixaFaturamento = 'menos_2k' | '2k_3500' | '3500_5k' | 'mais_5k';
-
-export interface Referencia {
-  nome: string;
-  telefone: string;
-  parentesco: string;
-}
+export type FaixaFaturamento = 'ate_1k' | '1k_2k' | '2k_3500' | 'mais_3500';
 
 export interface EstadoFormulario {
   // Card 1
@@ -22,8 +16,6 @@ export interface EstadoFormulario {
   // Card 4
   faturamento: FaixaFaturamento | null;
   // Card 5
-  referencias: Referencia[];
-  // Card 6
   nomeCompleto: string;
   cpf: string;
   email: string;
@@ -34,7 +26,7 @@ export interface EstadoFormulario {
   cep: string;
   cidade: string;
   estadoUF: string;
-  // Card 7
+  // Card 6
   aceitouCondicoes: boolean;
 }
 
@@ -45,7 +37,6 @@ export interface PayloadSubmit {
     ultimaCorridaData: UltimaEntrega;
     faturamentoBruto: FaixaFaturamento;
   };
-  referencias: Referencia[];
   nomeCompleto: string;
   cpf: string;
   email: string;
