@@ -1,27 +1,23 @@
-import { MongoClient } from 'mongodb';
+import { MongoClient, type MongoClientOptions } from 'mongodb';
 
 if (!process.env.MONGODB_URI) {
   throw new Error('Variável de ambiente ausente: "MONGODB_URI"');
 }
 
 const uri = process.env.MONGODB_URI;
-const options = {};
+const options: MongoClientOptions = {
+  maxPoolSize: 5,
+  serverSelectionTimeoutMS: 10000,
+};
 
-let client: MongoClient;
-let clientPromise: Promise<MongoClient>;
-
-if (process.env.NODE_ENV === 'development') {
-  const globalWithMongo = global as typeof globalThis & {
-    _mongoClientPromise?: Promise<MongoClient>;
-  };
-  if (!globalWithMongo._mongoClientPromise) {
-    client = new MongoClient(uri, options);
-    globalWithMongo._mongoClientPromise = client.connect();
-  }
-  clientPromise = globalWithMongo._mongoClientPromise;
-} else {
-  client = new MongoClient(uri, options);
-  clientPromise = client.connect();
+declare global {
+  var _mongoClientPromise: Promise<MongoClient> | undefined;
 }
+
+if (!global._mongoClientPromise) {
+  global._mongoClientPromise = new MongoClient(uri, options).connect();
+}
+
+const clientPromise = global._mongoClientPromise;
 
 export default clientPromise;
