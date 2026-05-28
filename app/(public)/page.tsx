@@ -153,30 +153,8 @@ export default function Home() {
       if (typeof window !== 'undefined' && (window as any).fbq) {
         (window as any).fbq('track', 'Lead');
       }
-      const fbc = document.cookie.match(/(^| )_fbc=([^;]+)/)?.[2];
-      const fbp = document.cookie.match(/(^| )_fbp=([^;]+)/)?.[2];
-      await fetch('/api/meta-capi', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          eventName: 'Lead',
-          userData: {
-            email: estado.email,
-            firstName: estado.nomeCompleto.split(' ')[0],
-            lastName: estado.nomeCompleto.split(' ').slice(1).join(' ') || undefined,
-            fbc,
-            fbp,
-          },
-          eventSourceUrl: window.location.href,
-        }),
-      });
       localStorage.removeItem(DRAFT_KEY);
       localStorage.setItem('cf_cpf', estado.cpf.replace(/\D/g, ''));
-      localStorage.setItem('cf_user_data', JSON.stringify({
-        email: estado.email,
-        firstName: estado.nomeCompleto.split(' ')[0],
-        lastName: estado.nomeCompleto.split(' ').slice(1).join(' ') || undefined,
-      }));
       const link = encodeURIComponent(data.whatsappLink);
       router.push(`/aprovado?id=${data.contactId}&link=${link}`);
     } catch {

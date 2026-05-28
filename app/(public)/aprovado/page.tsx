@@ -5,23 +5,10 @@ import { Suspense, useEffect, useState } from 'react';
 import { FlagValues } from 'flags/react';
 import { track } from '@vercel/analytics';
 
-interface UserData {
-  email?: string;
-  firstName?: string;
-  lastName?: string;
-}
-
-function getCookie(name: string): string | undefined {
-  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-  return match?.[2];
-}
-
 function ConteudoAprovado() {
   const params = useSearchParams();
   const router = useRouter();
   const id = params.get('id') ?? '';
-  const [isSendingCAPI, setIsSendingCAPI] = useState(false);
-  const [userData, setUserData] = useState<UserData | null>(null);
   const [senha, setSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [erroSenha, setErroSenha] = useState('');
@@ -30,47 +17,9 @@ function ConteudoAprovado() {
   const [mostrarConfirmarSenha, setMostrarConfirmarSenha] = useState(false);
 
   useEffect(() => {
-    const sendCompleteRegistrationEvent = async () => {
-      if (typeof window === 'undefined') return;
-
-      const userDataStr = localStorage.getItem('cf_user_data');
-      if (!userDataStr) return;
-
-      try {
-        const parsed: UserData = JSON.parse(userDataStr);
-        setUserData(parsed);
-
-        if (parsed.email || parsed.firstName || parsed.lastName) {
-          setIsSendingCAPI(true);
-
-          await fetch('/api/meta-capi', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              eventName: 'CompleteRegistration',
-              userData: {
-                email: parsed.email,
-                firstName: parsed.firstName,
-                lastName: parsed.lastName,
-                fbc: getCookie('_fbc'),
-                fbp: getCookie('_fbp'),
-              },
-              eventSourceUrl: window.location.href,
-            }),
-          });
-        }
-      } catch (error) {
-        console.error('Erro ao enviar evento CAPI:', error);
-      } finally {
-        setIsSendingCAPI(false);
-      }
-    };
-
     if (typeof window !== 'undefined' && (window as any).fbq) {
       (window as any).fbq('track', 'CompleteRegistration');
     }
-
-    sendCompleteRegistrationEvent();
   }, []);
 
   const handleCriarConta = async () => {
