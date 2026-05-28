@@ -72,8 +72,9 @@ export async function POST(req: NextRequest) {
       { upsert: true, returnDocument: 'after', projection: { contactId: 1, formCode: 1 } }
     );
 
-    const formCode = result?.formCode || formCodeGerado;
-    const contactId = result?.contactId || formCode;
+    const updatedConversation = result?.value as { contactId?: string; formCode?: string } | null;
+    const formCode = updatedConversation?.formCode || formCodeGerado;
+    const contactId = updatedConversation?.contactId || formCode;
 
     // Rodízio de números: verifica disponibilidade via Graph API
     const availableNumber = await getAvailableWhatsAppNumber(formCode);
