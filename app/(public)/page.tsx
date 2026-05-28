@@ -112,6 +112,8 @@ export default function Home() {
   }
 
   async function enviar() {
+    if (loading) return;
+
     // Validação extra de segurança
     if (!estado.faturamento || !estado.tempoAtuacao || !estado.ultimaEntrega) {
       alert('Por favor, preencha todas as etapas antes de enviar.');
@@ -149,14 +151,15 @@ export default function Home() {
       if (!res.ok) throw new Error('Erro no servidor');
 
       const data = await res.json();
-      track('form_completed', { contactId: data.contactId });
+      const codigo = data.formCode || data.contactId;
+      track('form_completed', { contactId: data.contactId, formCode: codigo });
       if (typeof window !== 'undefined' && (window as any).fbq) {
         (window as any).fbq('track', 'Lead');
       }
       localStorage.removeItem(DRAFT_KEY);
       localStorage.setItem('cf_cpf', estado.cpf.replace(/\D/g, ''));
       const link = encodeURIComponent(data.whatsappLink);
-      router.push(`/aprovado?id=${data.contactId}&link=${link}`);
+      router.push(`/aprovado?id=${codigo}&link=${link}`);
     } catch {
       setLoading(false);
       alert('Ocorreu um erro ao enviar. Tente novamente.');

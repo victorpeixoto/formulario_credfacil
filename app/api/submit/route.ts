@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     if (!estadoUF?.trim()) return NextResponse.json({ erro: 'Estado obrigatório.' }, { status: 400 });
     if (!aceitouCondicoes) return NextResponse.json({ erro: 'Aceite obrigatório.' }, { status: 400 });
 
-    const formCode = uuidv4();
+    const formCodeGerado = uuidv4();
     const now = new Date().toISOString();
     const cpfLimpo = cpf.replace(/\D/g, '');
 
@@ -35,47 +35,48 @@ export async function POST(req: NextRequest) {
     const db = client.db('credfacil');
     const col = db.collection('conversations');
 
-    // Verifica se já existe registro para este CPF (ex: usuário que já conversou pelo WhatsApp)
-    const existing = await col.findOne({ cpf: cpfLimpo });
-
-    await col.updateOne(
+    const result = await col.findOneAndUpdate(
       { cpf: cpfLimpo },
-      {
-        $set: {
-          // Se já existe registro (ex: veio do WhatsApp direto), preserva o contactId do Chatwoot
-          // Se é registro novo, usa o formCode como contactId temporário
-          ...(existing ? {} : { contactId: formCode }),
-          formCode,
-          status: 'ETAPA_4',
-          isCompleted: false,
-          isAbandoned: false,
-          updatedAt: now,
-          nomeCompleto,
-          cpf: cpfLimpo,
-          email,
-          logradouro,
-          numero,
-          complemento: complemento || '',
-          bairro: bairro || '',
-          cep: cep.replace(/\D/g, ''),
-          cidade,
-          estadoUF,
-          trabalho,
-          aceitouCondicoes,
-          documentosSolicitados: false,
-          transferidoParaHumano: false,
-          qualificacao_naoAtende: false,
-          qualificacao_motivo: null,
-          historico: [],
-          dadosConfirmados: false,
+      [
+        {
+          $set: {
+            // Preserva os identificadores já emitidos para não invalidar links/códigos antigos.
+            formCode: { $ifNull: ['$formCode', formCodeGerado] },
+            contactId: { $ifNull: ['$contactId', { $ifNull: ['$formCode', formCodeGerado] }] },
+            status: 'ETAPA_4',
+            isCompleted: false,
+            isAbandoned: false,
+            updatedAt: now,
+            createdAt: { $ifNull: ['$createdAt', now] },
+            nomeCompleto,
+            cpf: cpfLimpo,
+            email,
+            logradouro,
+            numero,
+            complemento: complemento || '',
+            bairro: bairro || '',
+            cep: cep.replace(/\D/g, ''),
+            cidade,
+            estadoUF,
+            trabalho,
+            aceitouCondicoes,
+            documentosSolicitados: false,
+            transferidoParaHumano: false,
+            qualificacao_naoAtende: false,
+            qualificacao_motivo: null,
+            historico: { $ifNull: ['$historico', []] },
+            dadosConfirmados: false,
+          },
         },
-        $setOnInsert: { createdAt: now },
-      },
-      { upsert: true }
+      ],
+      { upsert: true, returnDocument: 'after', projection: { contactId: 1, formCode: 1 } }
     );
 
+    const formCode = result?.formCode || formCodeGerado;
+    const contactId = result?.contactId || formCode;
+
     // Rodízio de números: verifica disponibilidade via Graph API
-    const availableNumber = await getAvailableWhatsAppNumber(existing?.contactId || formCode);
+    const availableNumber = await getAvailableWhatsAppNumber(formCode);
     if (!availableNumber) {
       return NextResponse.json(
         { erro: 'Nenhum número disponível no momento. Nossa equipe já foi notificada. Tente novamente em breve.' },
@@ -96,7 +97,7 @@ export async function POST(req: NextRequest) {
       }
     );
 
-    return NextResponse.json({ contactId: existing?.contactId || formCode, whatsappLink });
+    return NextResponse.json({ contactId, formCode, whatsappLink });
   } catch (err) {
     console.error('[submit] erro:', err);
     return NextResponse.json({ erro: 'Erro interno.' }, { status: 500 });
