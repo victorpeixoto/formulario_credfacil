@@ -45,7 +45,7 @@ export default function CardFaturamento({ valor, onChange, ciente, onCienteChang
 
       <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
         <p className="text-orange-800 text-xs font-medium leading-relaxed">
-          Essa informação será conferida na análise, caso você minta, será bloqueado para sempre em nossa empresa.
+          Atenção: Essa informação será conferida na análise, caso você minta, será bloqueado para sempre em nossa empresa.
         </p>
       </div>
 
