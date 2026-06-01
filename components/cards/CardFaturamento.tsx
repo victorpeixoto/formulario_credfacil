@@ -23,7 +23,7 @@ export default function CardFaturamento({ valor, onChange, ciente, onCienteChang
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Qual seu faturamento bruto mensal?</h2>
+        <h2 className="text-2xl font-bold text-gray-900">Qual é o seu faturamento bruto mensal somando todos os aplicativos?</h2>
         <p className="text-gray-500 mt-1 text-sm">Valor total recebido, sem descontar despesas.</p>
       </div>
 
@@ -45,8 +45,7 @@ export default function CardFaturamento({ valor, onChange, ciente, onCienteChang
 
       <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
         <p className="text-orange-800 text-xs font-medium leading-relaxed">
-          Atenção: esta informação é de extrema importância para a análise.
-          Informações falsas ou inconsistentes resultam em desclassificação automática do pedido.
+          Essa informação será conferida na análise, caso você minta, será bloqueado para sempre em nossa empresa.
         </p>
       </div>
 
