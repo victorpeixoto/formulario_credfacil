@@ -16,7 +16,7 @@ const PROMPT = `Analise este vídeo de gravação de tela de um aplicativo de tr
 10. A foto do perfil do candidato aparece visível no vídeo?
 
 IMPORTANTE sobre cortes/transições:
-- Este é um vídeo de GRAVAÇÃO DE TELA. O usuário navega entre telas, abas e aplicativos diferentes durante a gravação.
+- Este é um vídeo de GRAVAÇÃO DE TELA ou outro celular gravando uma tela. O usuário navega entre telas, abas e aplicativos diferentes durante a gravação.
 - Transições naturais de navegação (trocar de tela, abrir menu, scroll, mudar de app, voltar para home) NÃO são cortes nem edição.
 - Considere "temCortes" como true APENAS se houver sinais claros de adulteração: saltos bruscos no tempo, frames inseridos de outra gravação, sobreposição de imagens editadas, ou alteração visível de dados/valores na tela.
 
@@ -62,10 +62,18 @@ export async function validarVideoApp(videoUrl: string): Promise<{
         dadosExtraidos: dados,
       };
     }
-    if (dados.ganhosMensais.some((g) => g.valor < 3500)) {
+    const LIMITE = 3500;
+    // Ordena do mês mais antigo para o mais recente ("YYYY-MM")
+    const meses = [...dados.ganhosMensais].sort((a, b) => a.mes.localeCompare(b.mes));
+
+    const seisMesesOk = meses.every((g) => g.valor >= LIMITE);
+    const tresMesesOk = meses.slice(-3).every((g) => g.valor >= LIMITE);
+
+    // Aprova se os 6 meses estão >= 3.5k; senão, tenta aprovar pelos últimos 3 meses.
+    if (!seisMesesOk && !tresMesesOk) {
       return {
         aprovado: false,
-        motivo: 'Faturamento mensal abaixo de R$ 3.500 em um ou mais dos últimos 6 meses.',
+        motivo: 'Faturamento abaixo de R$ 3.500: nem os últimos 6 meses, nem os últimos 3 meses atingiram o mínimo.',
         dadosExtraidos: dados,
       };
     }
