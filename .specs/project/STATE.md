@@ -1,13 +1,23 @@
 # State
 
-**Last updated:** 2026-05-19
-**Session:** Refatoração do pipeline de validação — modularização em `lib/ai/pipeline/`
+**Last updated:** 2026-06-01
+**Session:** Implementação da refatoração do pipeline (T1–T11)
 
 ---
 
 ## Current Focus
 
-Refatoração do pipeline concluída (T42–T46). Feature "validacao-documentos-ia" na branch `feature/validacao-documentos-ia`.
+Feature **`refatoracao-pipeline-validacao`** IMPLEMENTADA (T1–T10 ✅). Resumo:
+- **Rede de segurança (T1–T2):** runner de testes configurado (`npm test` = Node `--test` nativo + TS + loader de alias `@/`, **zero dependências novas**); 11 fixtures + oráculo AS-IS (`cruzamento-atual.ts`) — baseline verde.
+- **Fundação (T3–T5):** thresholds centralizados em `config.ts`; novo módulo puro `avaliar-cruzamento.ts` (substitui `cruzamento-inline.ts` + `cruzarDados` na produção); regressão `avaliarCruzamento === baseline` campo a campo (24/24 verdes).
+- **Pipeline (T6–T9):** `executarValidacoes` paralelizado (`Promise.allSettled`, sem delay 2s, falha isolada); `validar*` sem cruzamento (comprovante/video-app/biometria usam config); SSE `mapearStatus` corrige `analise_manual`; `executarPipeline` reescrito = 1 read + 1 update de progresso + 1 write consolidado, placa entre fontes movida p/ `avaliarCruzamento`.
+- **UI (T10):** já preparada (`STATUS_CONFIG.analise_manual`); T8 destravou a emissão.
+- **Pendente (T11):** medir `<60s` de parede e rodar casos manuais aprovado/pendência/análise-manual em **dev/staging** (precisa de credenciais Gemini/Rekognition/Mongo/R2). Lógica já travada pela regressão.
+
+Verificação offline: `tsc --noEmit` limpo, lint dos arquivos tocados limpo, `npm test` 24/24.
+Obs.: `cruzamento.ts` (cruzarDados) e `cruzamento-inline.ts` permanecem como **referência de baseline dos testes** (oráculo) — não mais no caminho de produção.
+
+Sessão anterior: Refatoração do pipeline concluída (T42–T46). Feature "validacao-documentos-ia" na branch `feature/validacao-documentos-ia`.
 
 **BUG CRÍTICO RESOLVIDO** — `[BUG] IA aprovou cadastro com nomes divergentes entre aplicativo e documentos` (ClickUp `86ahg6bqq`).  
 Fix implementado, commitado (`6648b48`), pushed e task marcada como `complete` no ClickUp.
@@ -81,7 +91,7 @@ Fix implementado, commitado (`6648b48`), pushed e task marcada como `complete` n
 ## Notes
 
 - A lista `IGNORED_INBOX_IDS` em `lib/whatsapp-rotation.ts` está hardcoded — possível tech debt
-- Não há testes automatizados — toda validação é manual ou via produção
+- ~~Não há testes automatizados~~ → Agora há regressão do cruzamento via `npm test` (Node `--test` nativo, sem deps). Demais áreas seguem sem testes.
 - O `status` gravado no MongoDB é `'ETAPA_4'` (não `'ETAPA_5'`) — o n8n deve estar mapeado para isso
 - `statusDocumentos: 'AGUARDANDO_DOCUMENTOS'` é o valor que indica primeiro acesso ao `/documentos`
 - Portal do cliente não altera nenhuma API existente — zero risco de regressão no fluxo original
