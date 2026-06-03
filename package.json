@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node --import ./lib/ai/pipeline/__tests__/register.mjs --test \"./lib/ai/pipeline/__tests__/**/*.test.ts\""
   },
   "dependencies": {
     "@aws-sdk/client-rekognition": "^3.1019.0",
