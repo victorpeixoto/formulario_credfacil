@@ -9,12 +9,16 @@ import { validarSelfiePlaca } from '@/lib/ai/validacoes/selfie-placa';
 import { validarVideoApp } from '@/lib/ai/validacoes/video-app';
 import { validarVideoVeiculo } from '@/lib/ai/validacoes/video-veiculo';
 import { validarBiometria } from '@/lib/ai/validacoes/biometria';
-import { cruzarDados, type DadosCadastro } from '@/lib/ai/cruzamento';
-import { executarValidacoes, type TarefaValidacao } from '@/lib/ai/pipeline/executar-validacoes';
-import { aplicarCruzamentoInline } from '@/lib/ai/pipeline/cruzamento-inline';
+import { type DadosCadastro } from '@/lib/ai/cruzamento';
+import { executarValidacoes, isErroTarefa, type TarefaValidacao } from '@/lib/ai/pipeline/executar-validacoes';
+import { avaliarCruzamento } from '@/lib/ai/pipeline/avaliar-cruzamento';
+import type { DadosExtraidosMap } from '@/lib/ai/pipeline/tipos-cruzamento';
 import { determinarStatusFinal } from '@/lib/ai/pipeline/determinar-status';
 import { sendTelegramAlert } from '@/lib/telegram-alert';
-import type { DocumentosMap, TipoDocumento } from '@/types/documentos';
+import type { DocumentoInfo, DocumentosMap, StatusDocumento, TipoDocumento } from '@/types/documentos';
+
+const TIPOS_DOCUMENTO: TipoDocumento[] = ['cnh', 'comprovante', 'selfie', 'videoApp', 'videoVeiculo'];
+const TIPOS_PLACA: TipoDocumento[] = ['selfie', 'videoApp', 'videoVeiculo'];
 
 interface IniciarBody {
   documentos: Record<TipoDocumento, string>;
@@ -31,30 +35,11 @@ async function executarPipeline(
 ) {
   const client = await clientPromise;
   const db = client.db('credfacil');
+  const conversations = db.collection('conversations');
+  const agora = () => new Date().toISOString();
 
-  const urls: Record<string, string> = {};
-  for (const [tipo, key] of Object.entries(fileKeys)) {
-    urls[tipo] = await gerarPresignedRead(key);
-  }
-
-  const updateStatus = async (tipo: TipoDocumento, updates: Record<string, unknown>) => {
-    await db.collection('conversations').updateOne(
-      { formCode },
-      { $set: { [`documentos.${tipo}`]: updates } }
-    );
-  };
-
-  const tiposParaValidar = reenvio ? tiposReenvio : Object.keys(fileKeys) as TipoDocumento[];
-
-  for (const tipo of tiposParaValidar) {
-    await updateStatus(tipo, {
-      url: fileKeys[tipo],
-      status: 'processando',
-      atualizadoEm: new Date().toISOString(),
-    });
-  }
-
-  const candidato = await db.collection('conversations').findOne({ formCode });
+  // ── 1 READ: cadastro + documentos atuais ──
+  const candidato = await conversations.findOne({ formCode });
   const docAtual = (candidato?.documentos ?? {}) as DocumentosMap;
 
   const cadastro: DadosCadastro = {
@@ -67,115 +52,134 @@ async function executarPipeline(
     estadoUF: candidato?.estadoUF ?? '',
     cep: candidato?.cep ?? '',
   };
-
   console.log(`[cadastro] nomeCompleto="${cadastro.nomeCompleto}" cpf="${cadastro.cpf}"`);
 
+  const tiposParaValidar = (reenvio ? tiposReenvio : (Object.keys(fileKeys) as TipoDocumento[]));
+
+  // Presigned URLs dos arquivos enviados agora
+  const urls: Record<string, string> = {};
+  for (const [tipo, key] of Object.entries(fileKeys)) {
+    urls[tipo] = await gerarPresignedRead(key);
+  }
+
+  // Progresso: 1 update enxuto marcando os docs a validar como 'processando'
+  const setProgresso: Record<string, unknown> = {};
+  for (const tipo of tiposParaValidar) {
+    setProgresso[`documentos.${tipo}.status`] = 'processando';
+    setProgresso[`documentos.${tipo}.atualizadoEm`] = agora();
+  }
+  if (Object.keys(setProgresso).length > 0) {
+    await conversations.updateOne({ formCode }, { $set: setProgresso });
+  }
+
+  // Monta tarefas de validação (executadas em paralelo)
   const tarefas: TarefaValidacao[] = [];
   for (const tipo of tiposParaValidar) {
     const url = urls[tipo];
     switch (tipo) {
       case 'cnh': tarefas.push({ tipo: 'cnh', fn: () => validarCNH(url) }); break;
-      case 'comprovante': tarefas.push({ tipo: 'comprovante', fn: () => validarComprovante(url, cadastro.nomeCompleto) }); break;
+      case 'comprovante': tarefas.push({ tipo: 'comprovante', fn: () => validarComprovante(url) }); break;
       case 'selfie': tarefas.push({ tipo: 'selfie', fn: () => validarSelfiePlaca(url) }); break;
       case 'videoApp': tarefas.push({ tipo: 'videoApp', fn: () => validarVideoApp(url) }); break;
       case 'videoVeiculo': tarefas.push({ tipo: 'videoVeiculo', fn: () => validarVideoVeiculo(url) }); break;
     }
   }
 
+  // Biometria depende de CNH + selfie; reaproveita URL já armazenada se não veio neste lote
   const cnhUrl = urls.cnh ?? (docAtual.cnh?.url ? await gerarPresignedRead(docAtual.cnh.url) : null);
   const selfieUrl = urls.selfie ?? (docAtual.selfie?.url ? await gerarPresignedRead(docAtual.selfie.url) : null);
   if (cnhUrl && selfieUrl) {
     tarefas.push({ tipo: 'biometria', fn: () => validarBiometria(cnhUrl, selfieUrl) });
   }
 
-  await executarValidacoes(tarefas, async (tipo, resultado) => {
-    const resultadoCruzado = aplicarCruzamentoInline(tipo, resultado, cadastro);
+  // ── Validações em PARALELO ──
+  const resultados = await executarValidacoes(tarefas);
 
-    if (tipo !== 'biometria') {
-      const tipoDoc = tipo as TipoDocumento;
-      const tentativasAnterior = (docAtual as unknown as Record<string, { tentativas?: number }>)[tipoDoc]?.tentativas ?? 0;
-      const { aprovado, motivo, dadosExtraidos, nomeDivergente } = resultadoCruzado;
-
-      const resultadoFinal: Record<string, unknown> = { aprovado, motivo, dadosExtraidos };
-      if (tipoDoc === 'comprovante' && typeof nomeDivergente === 'boolean') {
-        resultadoFinal.nomeDivergente = nomeDivergente;
+  // Monta os dados extraídos para o cruzamento: resultados novos + dados já armazenados
+  // (necessário p/ reenvio parcial — placa/nome dependem de documentos não reenviados).
+  const extraidos: DadosExtraidosMap = {};
+  for (const tipo of [...TIPOS_DOCUMENTO, 'biometria' as const]) {
+    const novo = resultados.get(tipo);
+    if (novo && !isErroTarefa(novo)) {
+      extraidos[tipo] = {
+        aprovadoRegraPropria: novo.aprovado,
+        motivo: novo.motivo,
+        dadosExtraidos: (novo.dadosExtraidos ?? {}) as Record<string, unknown>,
+      };
+    } else if (tipo !== 'biometria') {
+      const armazenado = docAtual[tipo]?.resultado;
+      if (armazenado) {
+        extraidos[tipo] = {
+          aprovadoRegraPropria: armazenado.aprovado,
+          motivo: armazenado.motivo,
+          dadosExtraidos: armazenado.dadosExtraidos ?? {},
+        };
       }
-
-      const statusDoc =
-        aprovado && tipoDoc === 'comprovante' && nomeDivergente === true
-          ? 'analise_manual'
-          : aprovado ? 'aprovado' : 'rejeitado';
-
-      await updateStatus(tipoDoc, {
-        url: fileKeys[tipoDoc] ?? docAtual[tipoDoc as keyof DocumentosMap]?.url,
-        status: statusDoc,
-        tentativas: tentativasAnterior + 1,
-        resultado: resultadoFinal,
-        atualizadoEm: new Date().toISOString(),
-      });
     }
+  }
 
-    return resultadoCruzado;
-  });
+  // ── Cruzamento unificado (fonte única; placa entre fontes incluída aqui) ──
+  const { statusPorDoc, motivos, validacaoIA } = avaliarCruzamento(extraidos, cadastro);
 
-  // Tratamento de erros de documentos (status 'erro' para falhas de execução)
-  for (const tipo of tiposParaValidar) {
-    const tipoDoc = tipo as TipoDocumento;
-    const docExistente = (await db.collection('conversations').findOne({ formCode }))?.documentos?.[tipoDoc];
-    if (!docExistente || docExistente.status === 'processando') {
-      await updateStatus(tipoDoc, {
-        url: fileKeys[tipoDoc] ?? docAtual[tipoDoc as keyof DocumentosMap]?.url,
+  // ── Monta documentos finais + 1 WRITE consolidado ──
+  const docsFinais: DocumentosMap = { ...docAtual };
+  const setFinal: Record<string, unknown> = {};
+
+  for (const tipo of TIPOS_DOCUMENTO) {
+    const resultadoTarefa = resultados.get(tipo);
+    const reidentificado = tiposParaValidar.includes(tipo);
+    const afetadoPlaca =
+      validacaoIA.placaConfere === false && TIPOS_PLACA.includes(tipo) && extraidos[tipo] !== undefined;
+
+    if (!reidentificado && !afetadoPlaca) continue; // mantém o documento como está
+
+    const tentativasAnterior = docAtual[tipo]?.tentativas ?? 0;
+    let doc: DocumentoInfo;
+
+    if (reidentificado && resultadoTarefa && isErroTarefa(resultadoTarefa)) {
+      // Falha definitiva da IA → erro (status final cairá em PENDENCIA)
+      doc = {
+        url: fileKeys[tipo] ?? docAtual[tipo]?.url ?? null,
         status: 'erro',
-        atualizadoEm: new Date().toISOString(),
-      });
+        tentativas: tentativasAnterior + 1,
+        resultado: docAtual[tipo]?.resultado ?? null,
+        atualizadoEm: agora(),
+      };
+    } else {
+      const status = (statusPorDoc[tipo] ?? docAtual[tipo]?.status ?? 'erro') as StatusDocumento;
+      const base = extraidos[tipo];
+      doc = {
+        url: fileKeys[tipo] ?? docAtual[tipo]?.url ?? null,
+        status,
+        tentativas: reidentificado ? tentativasAnterior + 1 : tentativasAnterior,
+        resultado: base
+          ? {
+              aprovado: status === 'aprovado' || status === 'analise_manual',
+              motivo: motivos[tipo] ?? null,
+              dadosExtraidos: base.dadosExtraidos,
+            }
+          : docAtual[tipo]?.resultado ?? null,
+        atualizadoEm: agora(),
+      };
     }
+
+    docsFinais[tipo] = doc;
+    setFinal[`documentos.${tipo}`] = doc;
   }
 
-  // Cruzamento final: calcula validacaoIA completa e verifica placa entre fontes
-  const candidatoAtualizado = await db.collection('conversations').findOne({ formCode });
-  const docsFinal = candidatoAtualizado?.documentos ?? {};
-
-  const resultadosParaCruzamento = {
-    cnh: docsFinal.cnh?.resultado ? { dadosExtraidos: docsFinal.cnh.resultado.dadosExtraidos } : undefined,
-    comprovante: docsFinal.comprovante?.resultado ? { dadosExtraidos: docsFinal.comprovante.resultado.dadosExtraidos } : undefined,
-    selfie: docsFinal.selfie?.resultado ? { dadosExtraidos: docsFinal.selfie.resultado.dadosExtraidos } : undefined,
-    videoApp: docsFinal.videoApp?.resultado ? { dadosExtraidos: docsFinal.videoApp.resultado.dadosExtraidos } : undefined,
-    videoVeiculo: docsFinal.videoVeiculo?.resultado ? { dadosExtraidos: docsFinal.videoVeiculo.resultado.dadosExtraidos } : undefined,
-  };
-
-  const validacaoIA = cruzarDados(resultadosParaCruzamento as Parameters<typeof cruzarDados>[0], cadastro);
-
-  if (validacaoIA.placaConfere === false) {
-    console.log(`[cruzamento] Rejeitando selfie, vídeo do app e vídeo do veículo: placa divergente entre fontes`);
-    const motivoPlaca = 'Placa divergente entre selfie, vídeo do app e vídeo do veículo';
-    for (const tipoPlaca of ['selfie', 'videoApp', 'videoVeiculo'] as const) {
-      const docExistente = (docsFinal as Record<string, { url?: string; tentativas?: number; resultado?: { dadosExtraidos?: unknown } } | undefined>)[tipoPlaca];
-      await updateStatus(tipoPlaca, {
-        url: docExistente?.url ?? fileKeys[tipoPlaca],
-        status: 'rejeitado',
-        tentativas: docExistente?.tentativas ?? 0,
-        resultado: { aprovado: false, motivo: motivoPlaca, dadosExtraidos: docExistente?.resultado?.dadosExtraidos ?? {} },
-        atualizadoEm: new Date().toISOString(),
-      });
-    }
-  }
-
-  const candidatoFinal = await db.collection('conversations').findOne({ formCode });
-  const todosDocs = (candidatoFinal?.documentos ?? {}) as DocumentosMap;
-
-  const { status: statusDocumentos, motivoManual } = determinarStatusFinal(todosDocs, validacaoIA);
+  const { status: statusDocumentos, motivoManual } = determinarStatusFinal(docsFinais, validacaoIA);
 
   if (statusDocumentos === 'ANALISE_MANUAL' && motivoManual) {
     await sendTelegramAlert(
       `⚠️ *CREDFÁCIL — ANÁLISE MANUAL*\n\nCandidato: \`${cpf}\`\nCódigo: \`${formCode}\`\nMotivo: ${motivoManual}`
     );
-    await db.collection('conversations').updateOne({ formCode }, { $set: { analistaAlertado: true } });
+    setFinal.analistaAlertado = true;
   }
 
-  await db.collection('conversations').updateOne(
-    { formCode },
-    { $set: { validacaoIA, statusDocumentos } }
-  );
+  setFinal.validacaoIA = validacaoIA;
+  setFinal.statusDocumentos = statusDocumentos;
+
+  await conversations.updateOne({ formCode }, { $set: setFinal });
 }
 
 export async function POST(req: NextRequest) {

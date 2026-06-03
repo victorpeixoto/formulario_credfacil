@@ -47,6 +47,7 @@ export async function GET(req: NextRequest) {
         const mapearStatus = (statusDb: string | undefined): string => {
           if (!statusDb || statusDb === 'pendente' || statusDb === 'enviado') return 'analisando';
           if (statusDb === 'processando') return 'analisando';
+          if (statusDb === 'analise_manual') return 'analise_manual';
           if (statusDb === 'aprovado' || statusDb === 'rejeitado' || statusDb === 'erro') return statusDb;
           return 'analisando';
         };
