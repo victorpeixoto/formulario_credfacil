@@ -58,7 +58,10 @@ export function sanitizarECriarUpdate(body: unknown): ResultadoSanitizacao {
 
   if (campos.telefone !== undefined) {
     const digitos = campos.telefone.replace(/\D/g, '');
-    if (digitos && !validarTelefone(digitos)) {
+    if (!digitos) {
+      return erro('telefone', 'Telefone é obrigatório');
+    }
+    if (!validarTelefone(digitos)) {
       return erro('telefone', 'Telefone inválido');
     }
     campos.telefone = digitos;
@@ -79,7 +82,7 @@ export function sanitizarECriarUpdate(body: unknown): ResultadoSanitizacao {
     }
   }
 
-  const obrigatoriosNaoVazios: Campo[] = ['nomeCompleto', 'email', 'logradouro', 'numero', 'bairro', 'cidade', 'estadoUF'];
+  const obrigatoriosNaoVazios: Campo[] = ['nomeCompleto', 'email', 'telefone', 'logradouro', 'numero', 'bairro', 'cidade', 'estadoUF'];
   for (const c of obrigatoriosNaoVazios) {
     if (campos[c] !== undefined && campos[c] === '') {
       return erro(c, `Campo ${c} não pode ficar vazio`);

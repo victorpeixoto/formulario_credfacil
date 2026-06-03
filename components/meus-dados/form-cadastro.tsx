@@ -44,6 +44,8 @@ export default function FormCadastro({ inicial, bloqueado, motivoBloqueio, onSal
     if (telefone) {
       const digitos = telefone.replace(/\D/g, '');
       if (digitos && !validarTelefone(digitos)) e.telefone = 'Telefone inválido.';
+    } else {
+      e.telefone = 'Informe o telefone.';
     }
     if (cep && cep.replace(/\D/g, '').length !== 8) e.cep = 'CEP deve ter 8 dígitos.';
     return e;
@@ -61,7 +63,8 @@ export default function FormCadastro({ inicial, bloqueado, motivoBloqueio, onSal
     cidade !== inicial.endereco.cidade ||
     estadoUF !== inicial.endereco.estadoUF;
 
-  const camposObrigatorios = nomeCompleto && email && logradouro && numero && cep && bairro && cidade && estadoUF;
+  const camposObrigatorios =
+    nomeCompleto && email && telefone && logradouro && numero && cep && bairro && cidade && estadoUF;
   const podeSalvar = dirty && !bloqueado && Object.keys(erros).length === 0 && !!camposObrigatorios && !salvando;
 
   async function aoMudarCep(valor: string) {
@@ -155,7 +158,7 @@ export default function FormCadastro({ inicial, bloqueado, motivoBloqueio, onSal
         />
       </Campo>
 
-      <Campo label="Telefone" erro={erros.telefone}>
+      <Campo label="Telefone *" erro={erros.telefone}>
         <input
           type="tel"
           inputMode="numeric"
