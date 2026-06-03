@@ -19,6 +19,7 @@ export interface EstadoFormulario {
   nomeCompleto: string;
   cpf: string;
   email: string;
+  telefone: string;
   logradouro: string;
   numero: string;
   complemento: string;
@@ -40,6 +41,7 @@ export interface PayloadSubmit {
   nomeCompleto: string;
   cpf: string;
   email: string;
+  telefone: string;
   logradouro: string;
   numero: string;
   complemento: string;

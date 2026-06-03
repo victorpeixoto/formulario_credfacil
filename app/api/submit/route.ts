@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import clientPromise from '@/lib/mongodb';
 import { getAvailableWhatsAppNumber } from '@/lib/whatsapp-rotation';
+import { validarTelefone } from '@/lib/validators';
 import type { PayloadSubmit } from '@/types/formulario';
 
 export async function POST(req: NextRequest) {
   try {
     const body: PayloadSubmit = await req.json();
 
-    const { trabalho, nomeCompleto, cpf, email, logradouro, numero, complemento, bairro, cep, cidade, estadoUF, aceitouCondicoes } = body;
+    const { trabalho, nomeCompleto, cpf, email, telefone, logradouro, numero, complemento, bairro, cep, cidade, estadoUF, aceitouCondicoes } = body;
 
     // Validação server-side rigorosa
     if (!trabalho?.apps?.length) return NextResponse.json({ erro: 'Selecione ao menos um App.' }, { status: 400 });
@@ -19,6 +20,7 @@ export async function POST(req: NextRequest) {
     if (!nomeCompleto?.trim()) return NextResponse.json({ erro: 'Nome obrigatório.' }, { status: 400 });
     if (!cpf || cpf.replace(/\D/g, '').length !== 11) return NextResponse.json({ erro: 'CPF inválido.' }, { status: 400 });
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return NextResponse.json({ erro: 'E-mail inválido.' }, { status: 400 });
+    if (!telefone || !validarTelefone(telefone.replace(/\D/g, ''))) return NextResponse.json({ erro: 'Telefone inválido.' }, { status: 400 });
     if (!logradouro?.trim()) return NextResponse.json({ erro: 'Logradouro obrigatório.' }, { status: 400 });
     if (!numero?.trim()) return NextResponse.json({ erro: 'Número obrigatório.' }, { status: 400 });
     if (!cep || cep.replace(/\D/g, '').length !== 8) return NextResponse.json({ erro: 'CEP inválido.' }, { status: 400 });
@@ -51,6 +53,7 @@ export async function POST(req: NextRequest) {
             nomeCompleto,
             cpf: cpfLimpo,
             email,
+            telefone: telefone.replace(/\D/g, ''),
             logradouro,
             numero,
             complemento: complemento || '',

@@ -2,13 +2,14 @@
 
 import { useState } from 'react';
 import BotaoAvancar from '@/components/BotaoAvancar';
-import { validarCPF, formatarCPF, validarEmail, validarNomeCompleto } from '@/lib/validators';
+import { validarCPF, formatarCPF, validarEmail, validarNomeCompleto, validarTelefone, formatarTelefone } from '@/lib/validators';
 import { buscarCep as buscarCepLib } from '@/lib/cep';
 
 interface Props {
   nomeCompleto: string;
   cpf: string;
   email: string;
+  telefone: string;
   logradouro: string;
   numero: string;
   complemento: string;
@@ -24,7 +25,7 @@ interface Props {
 }
 
 export default function CardDadosPessoais({
-  nomeCompleto, cpf, email,
+  nomeCompleto, cpf, email, telefone,
   logradouro, numero, complemento, bairro, cep, cidade, estadoUF,
   onChange, onAvancar, onVoltar, loading, label,
 }: Props) {
@@ -61,8 +62,9 @@ export default function CardDadosPessoais({
   const nomeOk = validarNomeCompleto(nomeCompleto);
   const cpfOk = validarCPF(cpf);
   const emailOk = validarEmail(email);
+  const telefoneOk = validarTelefone(telefone.replace(/\D/g, ''));
   const enderecoOk = !!(logradouro && numero && cep && cidade && estadoUF);
-  const podeContinuar = nomeOk && cpfOk && emailOk && enderecoOk;
+  const podeContinuar = nomeOk && cpfOk && emailOk && telefoneOk && enderecoOk;
 
   const camposTexto = [
     {
@@ -92,6 +94,15 @@ export default function CardDadosPessoais({
       inputMode: 'email' as React.HTMLAttributes<HTMLInputElement>['inputMode'],
       erro: tocados['email'] && !emailOk ? 'E-mail inválido.' : '',
     },
+    {
+      key: 'telefone',
+      label: 'Telefone',
+      valor: telefone,
+      placeholder: '(11) 99999-0000',
+      type: 'tel',
+      inputMode: 'numeric' as React.HTMLAttributes<HTMLInputElement>['inputMode'],
+      erro: tocados['telefone'] && !telefoneOk ? 'Telefone inválido.' : '',
+    },
   ];
 
   const inputBase = 'w-full bg-white border rounded-xl px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none transition-colors';
@@ -115,7 +126,9 @@ export default function CardDadosPessoais({
             placeholder={c.placeholder}
             value={c.valor}
             onChange={(e) => {
-              const val = c.key === 'cpf' ? formatarCPF(e.target.value) : e.target.value;
+              let val = e.target.value;
+              if (c.key === 'cpf') val = formatarCPF(val);
+              else if (c.key === 'telefone') val = formatarTelefone(val);
               onChange(c.key, val);
             }}
             onBlur={() => marcarTocado(c.key)}

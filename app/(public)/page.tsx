@@ -28,6 +28,7 @@ const estadoInicial: EstadoFormulario = {
   nomeCompleto: '',
   cpf: '',
   email: '',
+  telefone: '',
   logradouro: '',
   numero: '',
   complemento: '',
@@ -132,6 +133,7 @@ export default function Home() {
         nomeCompleto: estado.nomeCompleto,
         cpf: estado.cpf.replace(/\D/g, ''),
         email: estado.email,
+        telefone: estado.telefone.replace(/\D/g, ''),
         logradouro: estado.logradouro,
         numero: estado.numero,
         complemento: estado.complemento,
@@ -316,6 +318,7 @@ export default function Home() {
               nomeCompleto={estado.nomeCompleto}
               cpf={estado.cpf}
               email={estado.email}
+              telefone={estado.telefone}
               logradouro={estado.logradouro}
               numero={estado.numero}
               complemento={estado.complemento}
