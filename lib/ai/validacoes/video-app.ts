@@ -1,4 +1,5 @@
 import { analisarVideo } from '../gemini';
+import { FATURAMENTO_MENSAL_MINIMO, MESES_FATURAMENTO } from '../pipeline/config';
 import type { ResultadoVideoApp } from '@/types/documentos';
 
 const PROMPT = `Analise este vídeo de gravação de tela de um aplicativo de transporte/entrega e extraia:
@@ -55,25 +56,24 @@ export async function validarVideoApp(videoUrl: string): Promise<{
   }
 
   if (dados.ganhosMensais && Array.isArray(dados.ganhosMensais)) {
-    if (dados.ganhosMensais.length < 6) {
+    if (dados.ganhosMensais.length < MESES_FATURAMENTO) {
       return {
         aprovado: false,
-        motivo: 'Vídeo não mostra os ganhos dos últimos 6 meses completos.',
+        motivo: `Vídeo não mostra os ganhos dos últimos ${MESES_FATURAMENTO} meses completos.`,
         dadosExtraidos: dados,
       };
     }
-    const LIMITE = 3500;
     // Ordena do mês mais antigo para o mais recente ("YYYY-MM")
     const meses = [...dados.ganhosMensais].sort((a, b) => a.mes.localeCompare(b.mes));
 
-    const seisMesesOk = meses.every((g) => g.valor >= LIMITE);
-    const tresMesesOk = meses.slice(-3).every((g) => g.valor >= LIMITE);
+    const seisMesesOk = meses.every((g) => g.valor >= FATURAMENTO_MENSAL_MINIMO);
+    const tresMesesOk = meses.slice(-3).every((g) => g.valor >= FATURAMENTO_MENSAL_MINIMO);
 
-    // Aprova se os 6 meses estão >= 3.5k; senão, tenta aprovar pelos últimos 3 meses.
+    // Aprova se os 6 meses estão >= mínimo; senão, tenta aprovar pelos últimos 3 meses.
     if (!seisMesesOk && !tresMesesOk) {
       return {
         aprovado: false,
-        motivo: 'Faturamento abaixo de R$ 3.500: nem os últimos 6 meses, nem os últimos 3 meses atingiram o mínimo.',
+        motivo: `Faturamento abaixo de R$ ${FATURAMENTO_MENSAL_MINIMO}: nem os últimos ${MESES_FATURAMENTO} meses, nem os últimos 3 meses atingiram o mínimo.`,
         dadosExtraidos: dados,
       };
     }

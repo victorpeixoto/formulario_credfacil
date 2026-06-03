@@ -1,10 +1,7 @@
-import { DELAY_ENTRE_VALIDACOES_MS } from './config';
-
 export interface ResultadoTarefa {
   aprovado: boolean;
   motivo: string | null;
   dadosExtraidos: unknown;
-  nomeDivergente?: boolean;
 }
 
 export interface TarefaValidacao {
@@ -12,18 +9,13 @@ export interface TarefaValidacao {
   fn: () => Promise<ResultadoTarefa>;
 }
 
-export interface ResultadoExecucao {
-  tipo: string;
-  status: 'fulfilled';
-  value: ResultadoTarefa;
-  duracaoMs: number;
+/** Tarefa que falhou definitivamente (após retry). */
+export interface ErroTarefa {
+  erro: string;
 }
 
-export interface ErroExecucao {
-  tipo: string;
-  status: 'rejected';
-  reason: unknown;
-  duracaoMs: number;
+export function isErroTarefa(v: ResultadoTarefa | ErroTarefa): v is ErroTarefa {
+  return 'erro' in v;
 }
 
 type SaidaExecucao =
@@ -44,39 +36,49 @@ async function executarComRetry(fn: () => Promise<ResultadoTarefa>, tipo: string
   }
 }
 
+/**
+ * Executa todas as tarefas de validação EM PARALELO (`Promise.allSettled`), com
+ * retry de rate limit por tarefa. Não persiste nada: apenas devolve os resultados
+ * crus. A falha de uma tarefa não derruba as demais.
+ */
 export async function executarValidacoes(
-  tarefas: TarefaValidacao[],
-  onResultado: (tipo: string, resultado: ResultadoTarefa) => Promise<ResultadoTarefa>
-): Promise<Map<string, ResultadoTarefa>> {
-  const resultados = new Map<string, ResultadoTarefa>();
+  tarefas: TarefaValidacao[]
+): Promise<Map<string, ResultadoTarefa | ErroTarefa>> {
+  const execucoes = await Promise.allSettled(
+    tarefas.map(async ({ tipo, fn }) => {
+      console.log(`[validacao] Iniciando: ${tipo}`);
+      const inicio = Date.now();
+      const saida = await executarComRetry(fn, tipo);
+      return { tipo, saida, duracaoMs: Date.now() - inicio };
+    })
+  );
 
-  for (let i = 0; i < tarefas.length; i++) {
-    const { tipo, fn } = tarefas[i];
-    if (i > 0) await new Promise((r) => setTimeout(r, DELAY_ENTRE_VALIDACOES_MS));
+  const resultados = new Map<string, ResultadoTarefa | ErroTarefa>();
 
-    console.log(`[validacao] Iniciando: ${tipo}`);
-    const inicio = Date.now();
-    const saida = await executarComRetry(fn, tipo);
-    const duracaoMs = Date.now() - inicio;
+  execucoes.forEach((execucao, i) => {
+    if (execucao.status === 'rejected') {
+      const tipo = tarefas[i].tipo;
+      const msg = execucao.reason instanceof Error ? execucao.reason.message : String(execucao.reason);
+      console.error(`[validacao] ${tipo}: ERRO inesperado | ${msg}`);
+      resultados.set(tipo, { erro: msg });
+      return;
+    }
 
+    const { tipo, saida, duracaoMs } = execucao.value;
     if (saida.status === 'fulfilled') {
       console.log(
         `[validacao] ${tipo}: ${saida.value.aprovado ? 'APROVADO' : 'REJEITADO'} (${duracaoMs}ms)` +
         (saida.value.motivo ? ` | motivo: ${saida.value.motivo}` : '')
       );
-      console.log(`[validacao] ${tipo} dadosExtraidos:`, JSON.stringify(saida.value.dadosExtraidos, null, 2));
-
-      const resultadoFinal = await onResultado(tipo, saida.value);
-      resultados.set(tipo, resultadoFinal);
+      resultados.set(tipo, saida.value);
     } else {
       const err = saida.reason;
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`[validacao] ${tipo}: ERRO (${duracaoMs}ms) | ${msg}`);
-      if (err instanceof Error && err.stack) {
-        console.error(`[validacao] ${tipo} stack:`, err.stack);
-      }
+      if (err instanceof Error && err.stack) console.error(`[validacao] ${tipo} stack:`, err.stack);
+      resultados.set(tipo, { erro: msg });
     }
-  }
+  });
 
   return resultados;
 }

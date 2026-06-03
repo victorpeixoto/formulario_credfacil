@@ -48,10 +48,6 @@ export function cruzarComprovante(resultado: ResultadoTarefa, cadastro: DadosCad
     return { ...resultado, aprovado: false, motivo: 'Endereço do comprovante não confere com o cadastro' };
   }
 
-  if (resultado.nomeDivergente === true) {
-    console.log(`[cruzamento] Comprovante: endereço OK mas nome de terceiro → analise_manual`);
-  }
-
   return resultado;
 }
 

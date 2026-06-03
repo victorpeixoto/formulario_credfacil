@@ -1,4 +1,5 @@
 import { compararRostos } from '../rekognition';
+import { THRESHOLD_BIOMETRIA, THRESHOLD_BIOMETRIA_MANUAL } from '../pipeline/config';
 import type { ResultadoBiometria } from '@/types/documentos';
 
 export async function validarBiometria(cnhUrl: string, selfieUrl: string): Promise<{
@@ -16,11 +17,11 @@ export async function validarBiometria(cnhUrl: string, selfieUrl: string): Promi
     };
   }
 
-  if (resultado.similarity >= 90) {
+  if (resultado.similarity >= THRESHOLD_BIOMETRIA) {
     return { aprovado: true, motivo: null, dadosExtraidos: { similarity: resultado.similarity, match: resultado.match } };
   }
 
-  if (resultado.similarity >= 80) {
+  if (resultado.similarity >= THRESHOLD_BIOMETRIA_MANUAL) {
     return {
       aprovado: false,
       motivo: `Similaridade intermediária (${resultado.similarity.toFixed(1)}%) — requer revisão humana`,
