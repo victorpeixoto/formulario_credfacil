@@ -29,10 +29,29 @@ test('falha de uma tarefa não derruba as demais (allSettled + retry)', async ()
     { tipo: 'falha', fn: async () => { throw new Error('boom'); } },
   ];
 
-  const res = await executarValidacoes(tarefas);
+  const res = await executarValidacoes(tarefas, { retryDelayMs: 1 });
 
   const ok = res.get('ok');
   const falha = res.get('falha');
   assert.ok(ok && !isErroTarefa(ok) && ok.aprovado === true);
   assert.ok(falha && isErroTarefa(falha) && falha.erro === 'boom');
+});
+
+test('tarefa travada vira erro dentro do timeout configurado', async () => {
+  const tarefas: TarefaValidacao[] = [
+    { tipo: 'travada', fn: () => new Promise(() => {}) },
+    { tipo: 'ok', fn: async () => ({ aprovado: true, motivo: null, dadosExtraidos: {} }) },
+  ];
+
+  const inicio = Date.now();
+  const res = await executarValidacoes(tarefas, { timeoutMs: 40, retryDelayMs: 1 });
+  const duracaoMs = Date.now() - inicio;
+
+  const travada = res.get('travada');
+  const ok = res.get('ok');
+
+  assert.ok(duracaoMs < 150, `esperado timeout rápido, obtido ${duracaoMs}ms`);
+  assert.ok(travada && isErroTarefa(travada));
+  assert.match(travada.erro, /Timeout/);
+  assert.ok(ok && !isErroTarefa(ok) && ok.aprovado === true);
 });

@@ -1,3 +1,5 @@
+import { TIMEOUT_VALIDACAO_MS } from './config';
+
 export interface ResultadoTarefa {
   aprovado: boolean;
   motivo: string | null;
@@ -22,14 +24,61 @@ type SaidaExecucao =
   | { status: 'fulfilled'; value: ResultadoTarefa }
   | { status: 'rejected'; reason: unknown };
 
-async function executarComRetry(fn: () => Promise<ResultadoTarefa>, tipo: string): Promise<SaidaExecucao> {
+interface OpcoesExecucao {
+  timeoutMs?: number;
+  retryDelayMs?: number;
+}
+
+class TimeoutValidacaoError extends Error {
+  constructor(ms: number, tipo: string) {
+    super(`Timeout de ${ms}ms na validação ${tipo}`);
+    this.name = 'TimeoutValidacaoError';
+  }
+}
+
+function comTimeout<T>(fn: () => Promise<T>, ms: number, tipo: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const id = setTimeout(() => {
+      reject(new TimeoutValidacaoError(ms, tipo));
+    }, ms);
+
+    fn().then(
+      (valor) => {
+        clearTimeout(id);
+        resolve(valor);
+      },
+      (erro) => {
+        clearTimeout(id);
+        reject(erro);
+      }
+    );
+  });
+}
+
+async function executarComRetry(
+  fn: () => Promise<ResultadoTarefa>,
+  tipo: string,
+  { timeoutMs = TIMEOUT_VALIDACAO_MS, retryDelayMs = 3000 }: Required<OpcoesExecucao>
+): Promise<SaidaExecucao> {
+  const deadline = Date.now() + timeoutMs;
+  const executarTentativa = () => {
+    const restanteMs = Math.max(1, deadline - Date.now());
+    return comTimeout(fn, restanteMs, tipo);
+  };
+
   try {
-    return { status: 'fulfilled' as const, value: await fn() };
+    return { status: 'fulfilled' as const, value: await executarTentativa() };
   } catch (e) {
-    console.warn(`[validacao] ${tipo}: 1ª tentativa falhou (${e instanceof Error ? e.message : String(e)}), tentando novamente em 3s...`);
-    await new Promise((r) => setTimeout(r, 3000));
+    if (e instanceof TimeoutValidacaoError || Date.now() >= deadline) {
+      return { status: 'rejected' as const, reason: e };
+    }
+
+    const esperaRetryMs = Math.min(retryDelayMs, Math.max(1, deadline - Date.now()));
+    console.warn(`[validacao] ${tipo}: 1ª tentativa falhou (${e instanceof Error ? e.message : String(e)}), tentando novamente em ${esperaRetryMs}ms...`);
+    await new Promise((r) => setTimeout(r, esperaRetryMs));
+
     try {
-      return { status: 'fulfilled' as const, value: await fn() };
+      return { status: 'fulfilled' as const, value: await executarTentativa() };
     } catch (e2) {
       return { status: 'rejected' as const, reason: e2 };
     }
@@ -42,13 +91,19 @@ async function executarComRetry(fn: () => Promise<ResultadoTarefa>, tipo: string
  * crus. A falha de uma tarefa não derruba as demais.
  */
 export async function executarValidacoes(
-  tarefas: TarefaValidacao[]
+  tarefas: TarefaValidacao[],
+  opcoes: OpcoesExecucao = {}
 ): Promise<Map<string, ResultadoTarefa | ErroTarefa>> {
+  const opcoesCompletas: Required<OpcoesExecucao> = {
+    timeoutMs: opcoes.timeoutMs ?? TIMEOUT_VALIDACAO_MS,
+    retryDelayMs: opcoes.retryDelayMs ?? 3000,
+  };
+
   const execucoes = await Promise.allSettled(
     tarefas.map(async ({ tipo, fn }) => {
       console.log(`[validacao] Iniciando: ${tipo}`);
       const inicio = Date.now();
-      const saida = await executarComRetry(fn, tipo);
+      const saida = await executarComRetry(fn, tipo, opcoesCompletas);
       return { tipo, saida, duracaoMs: Date.now() - inicio };
     })
   );

@@ -7,6 +7,8 @@ import ReenvioDocumento from '@/components/portal/reenvio-documento';
 import SecaoContato from '@/components/portal/secao-contato';
 
 const TIPOS: TipoDocumento[] = ['cnh', 'comprovante', 'selfie', 'videoApp', 'videoVeiculo'];
+const MAX_RECONEXOES_SSE = 5;
+const MENSAGEM_ANALISE_DEMORADA = 'A análise demorou mais que o esperado. Recarregue a página ou tente novamente.';
 
 interface DadosCandidato {
   nomeCompleto: string;
@@ -37,7 +39,9 @@ export default function PagePortal() {
   const [whatsappLink, setWhatsappLink] = useState<string | null>(null);
   const [whatsappCarregando, setWhatsappCarregando] = useState(false);
   const [reconectando, setReconectando] = useState(false);
+  const [erroAnalise, setErroAnalise] = useState<string | null>(null);
   const esRef = useRef<EventSource | null>(null);
+  const reconexoesRef = useRef(0);
   const videoVeiculoRejeitadoRef = useRef(false);
 
   // Buscar dados do candidato
@@ -75,6 +79,7 @@ export default function PagePortal() {
   // SSE para atualizações em tempo real
   const conectarSSE = useCallback(() => {
     if (esRef.current) esRef.current.close();
+    setErroAnalise(null);
 
     const es = new EventSource('/api/validacao/status');
     esRef.current = es;
@@ -103,6 +108,8 @@ export default function PagePortal() {
 
     es.addEventListener('concluido', async (e) => {
       const evento = JSON.parse(e.data);
+      reconexoesRef.current = 0;
+      setErroAnalise(null);
       setDados((prev) => prev ? {
         ...prev,
         statusDocumentos: evento.statusFinal,
@@ -118,8 +125,26 @@ export default function PagePortal() {
       }
     });
 
+    es.addEventListener('erro', (e) => {
+      const evento = JSON.parse(e.data);
+      const mensagem = typeof evento.mensagem === 'string' && !evento.mensagem.toLowerCase().includes('timeout')
+        ? evento.mensagem
+        : MENSAGEM_ANALISE_DEMORADA;
+      es.close();
+      setReconectando(false);
+      setErroAnalise(mensagem);
+    });
+
     es.onerror = () => {
       es.close();
+      reconexoesRef.current += 1;
+
+      if (reconexoesRef.current > MAX_RECONEXOES_SSE) {
+        setReconectando(false);
+        setErroAnalise(MENSAGEM_ANALISE_DEMORADA);
+        return;
+      }
+
       setReconectando(true);
       setTimeout(() => {
         setReconectando(false);
@@ -156,6 +181,8 @@ export default function PagePortal() {
   // Callback quando um reenvio é concluído
   const handleReConcluido = useCallback(() => {
     setReenviarTipo(null);
+    reconexoesRef.current = 0;
+    setErroAnalise(null);
     // Recarregar dados e reconectar SSE
     carregarDados().then(() => {
       conectarSSE();
@@ -250,6 +277,20 @@ export default function PagePortal() {
         <div className="mx-6 mt-3 bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center gap-2">
           <div className="w-4 h-4 rounded-full border-2 border-amber-300 border-t-amber-600 animate-spin" />
           <p className="text-amber-700 text-xs">Reconectando...</p>
+        </div>
+      )}
+
+      {/* Erro na análise */}
+      {erroAnalise && (
+        <div className="mx-6 mt-3 bg-red-50 border border-red-200 rounded-xl p-4">
+          <p className="text-red-800 text-sm font-semibold">Análise demorando</p>
+          <p className="text-red-700 text-xs mt-1">{erroAnalise}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-3 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 active:scale-95 text-white text-xs font-semibold transition-all"
+          >
+            Recarregar
+          </button>
         </div>
       )}
 

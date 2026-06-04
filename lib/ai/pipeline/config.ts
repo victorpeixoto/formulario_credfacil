@@ -15,3 +15,4 @@ export const MESES_FATURAMENTO = 6;
 export const PRAZO_COMPROVANTE_DIAS = 90;
 export const DIAS_MINIMOS_VALIDADE_CNH = 30;
 export const MAX_TENTATIVAS_ANTES_MANUAL = 3;
+export const TIMEOUT_VALIDACAO_MS = 120_000;

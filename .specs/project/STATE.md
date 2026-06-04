@@ -5,6 +5,16 @@
 
 ---
 
+## Current Focus (2026-06-04 — sessão tarde)
+
+**Bug urgente `86ahf46z7` implementado localmente** ([BUG] Análise da IA travando +30 min no iPhone). Spec em `.specs/features/20260604-bug-analise-trava-iphone/` atualizada.
+- **Causa primária:** sem timeout nas tarefas — `executar-validacoes.ts` (`Promise.allSettled` + `await fn()` sem timeout) + `fetch`/`generateContent` sem `AbortSignal`. Uma tarefa travada (vídeo `.mov` grande do iPhone) prende o pipeline → `statusDocumentos` fica `PROCESSANDO` para sempre.
+- **Agravantes:** `.catch()` em `iniciar/route.ts` só loga (falha silenciosa); frontend `status/page.tsx` reconecta sem limite e ignora o evento SSE `erro` (timeout de 10 min em `status/route.ts`) → ~30 min sem feedback.
+- **Fix aplicado (defense-in-depth, não toca cruzamento/decisão):** (1) timeout/tarefa = **120s** (`TIMEOUT_VALIDACAO_MS`), parametrizável nos testes; (2) status terminal `PENDENCIA` no catch do pipeline; (3) listener SSE `erro`, limite de **5** reconexões e aviso com botão "Recarregar" no front.
+- **Validação local:** `npm test` 31/31 verde; `npx tsc --noEmit` limpo; `npx eslint` nos arquivos tocados limpo.
+- **Pendente:** teste manual no iPhone/staging com vídeo grande e atualização do ClickUp `86ahf46z7` após merge.
+- **Validações de tasks ClickUp em progresso/to do** concluídas e comentadas; cards implementados movidos para `complete` (`86ahw4mfb`, `86ahw4mc7`, `86ahw4m0p`, `86ahf4g21`, `86ahw4ktu` consolidado, `86ahw4m6u`).
+
 ## Current Focus (2026-06-04)
 
 Criadas **4 features separadas** (uma por card, a pedido), todas em `.specs/features/` com `spec.md` + `design.md` + `tasks.md`. Lista ClickUp 901327209475, todas `in progress` / *high*. (O 5º card original, `86ahw4ktu` "PDF preferencial/flexibilizar sombra", foi **descartado e consolidado** no card de CNH.)

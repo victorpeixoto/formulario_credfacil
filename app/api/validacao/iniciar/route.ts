@@ -225,8 +225,16 @@ export async function POST(req: NextRequest) {
       { $set: { statusDocumentos: 'PROCESSANDO' } }
     );
 
-    executarPipeline(payload.formCode, payload.cpf, fileKeys, reenvio, tiposReenvio, comprovanteTerceiro === true).catch((err) => {
+    executarPipeline(payload.formCode, payload.cpf, fileKeys, reenvio, tiposReenvio, comprovanteTerceiro === true).catch(async (err) => {
       console.error('[validacao/iniciar] Erro no pipeline:', err);
+      try {
+        await db.collection('conversations').updateOne(
+          { formCode: payload.formCode },
+          { $set: { statusDocumentos: 'PENDENCIA' } }
+        );
+      } catch (errStatus) {
+        console.error('[validacao/iniciar] Falha ao gravar status terminal:', errStatus);
+      }
     });
 
     return NextResponse.json({ status: 'processando' });
