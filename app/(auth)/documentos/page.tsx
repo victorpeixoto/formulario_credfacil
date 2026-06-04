@@ -58,6 +58,8 @@ export default function PageDocumentos() {
   const [modoCaptura, setModoCaptura] = useState<ModoCaptura>(null);
   const [enviandoPipeline, setEnviandoPipeline] = useState(false);
   const [erroUpload, setErroUpload] = useState<string | null>(null);
+  const [mostrarConfirmacaoComprovante, setMostrarConfirmacaoComprovante] = useState(false);
+  const [comprovanteTerceiro, setComprovanteTerceiro] = useState(false);
 
   const acaoAbrirCaptura = useAcaoUnica();
   const acaoContinuar = useAcaoUnica();
@@ -133,6 +135,14 @@ export default function PageDocumentos() {
     else if (tipo === 'videoVeiculo') setModoCaptura('videoVeiculo');
   };
 
+  const resetarDocumento = (tipo: TipoDocumento) => {
+    setEnviados((prev) => ({ ...prev, [tipo]: undefined }));
+    if (tipo === 'comprovante') {
+      setComprovanteTerceiro(false);
+      setMostrarConfirmacaoComprovante(false);
+    }
+  };
+
   const enviarParaAnalise = async () => {
     setEnviandoPipeline(true);
     try {
@@ -143,7 +153,7 @@ export default function PageDocumentos() {
       const res = await fetch('/api/validacao/iniciar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ documentos }),
+        body: JSON.stringify({ documentos, comprovanteTerceiro }),
       });
       if (!res.ok) throw new Error('Erro ao iniciar validação');
       router.refresh();
@@ -192,14 +202,16 @@ export default function PageDocumentos() {
                 )}
                 <div className="flex-1">
                   <p className="text-sm font-medium text-gray-800">{TITULOS[tipo].titulo}</p>
-                  <p className="text-xs text-green-500">✓ Enviado</p>
+                  <p className={tipo === 'comprovante' && comprovanteTerceiro ? 'text-xs text-amber-600' : 'text-xs text-green-500'}>
+                    {tipo === 'comprovante' && comprovanteTerceiro ? 'Análise manual por titular terceiro' : '✓ Enviado'}
+                  </p>
                 </div>
                 <button
                   type="button"
                   disabled={acaoRefazerResumo.executando}
                   onClick={() =>
                     acaoRefazerResumo.executar(() => {
-                      setEnviados((prev) => ({ ...prev, [tipo]: undefined }));
+                      resetarDocumento(tipo);
                       setPasso(ORDEM.indexOf(tipo));
                     })
                   }
@@ -299,6 +311,55 @@ export default function PageDocumentos() {
             </div>
           )}
 
+          {tipoAtual === 'comprovante' && (
+            <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4 text-sm">
+              {comprovanteTerceiro ? (
+                <div className="space-y-1">
+                  <p className="font-semibold text-amber-900">Comprovante marcado como terceiro/parente</p>
+                  <p className="text-amber-800">
+                    Para concluir, na próxima etapa você precisará enviar o documento do titular do comprovante.
+                  </p>
+                </div>
+              ) : mostrarConfirmacaoComprovante ? (
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <p className="font-semibold text-amber-900">O comprovante é de terceiro/parente?</p>
+                    <p className="text-amber-800">
+                      Para concluir, na próxima etapa você precisará enviar o documento do titular do comprovante.
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setComprovanteTerceiro(true);
+                        setMostrarConfirmacaoComprovante(false);
+                      }}
+                      className="w-full rounded-xl bg-amber-600 px-4 py-3 text-sm font-semibold text-white active:scale-95 transition-all"
+                    >
+                      Confirmar que está em nome de terceiro/parente
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMostrarConfirmacaoComprovante(false)}
+                      className="w-full rounded-xl px-4 py-3 text-sm font-semibold text-amber-800 hover:bg-amber-100 active:scale-95 transition-all"
+                    >
+                      Manter fluxo normal
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setMostrarConfirmacaoComprovante(true)}
+                  className="text-left font-semibold text-amber-900 underline decoration-amber-400 underline-offset-4"
+                >
+                  O comprovante não está no meu nome?
+                </button>
+              )}
+            </div>
+          )}
+
           <div className="flex flex-col gap-3 mt-auto pt-6">
             {!itemAtual?.fileKey && (
               <BotaoPrincipal
@@ -329,7 +390,7 @@ export default function PageDocumentos() {
                   textoExecutando="Resetando..."
                   onClick={() =>
                     acaoRefazer.executar(() => {
-                      setEnviados((prev) => ({ ...prev, [tipoAtual]: undefined }));
+                      resetarDocumento(tipoAtual);
                       abrirCapturaPara(tipoAtual);
                     })
                   }

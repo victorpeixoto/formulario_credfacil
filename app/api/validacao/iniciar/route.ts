@@ -19,11 +19,13 @@ import type { DocumentoInfo, DocumentosMap, StatusDocumento, TipoDocumento } fro
 
 const TIPOS_DOCUMENTO: TipoDocumento[] = ['cnh', 'comprovante', 'selfie', 'videoApp', 'videoVeiculo'];
 const TIPOS_PLACA: TipoDocumento[] = ['selfie', 'videoApp', 'videoVeiculo'];
+const MOTIVO_COMPROVANTE_TERCEIRO = 'Comprovante em nome de terceiro/parente';
 
 interface IniciarBody {
   documentos: Record<TipoDocumento, string>;
   reenvio?: boolean;
   tiposReenvio?: TipoDocumento[];
+  comprovanteTerceiro?: boolean;
 }
 
 async function executarPipeline(
@@ -31,7 +33,8 @@ async function executarPipeline(
   cpf: string,
   fileKeys: Record<string, string>,
   reenvio: boolean,
-  tiposReenvio: TipoDocumento[]
+  tiposReenvio: TipoDocumento[],
+  comprovanteTerceiro: boolean
 ) {
   const client = await clientPromise;
   const db = client.db('credfacil');
@@ -55,6 +58,8 @@ async function executarPipeline(
   console.log(`[cadastro] nomeCompleto="${cadastro.nomeCompleto}" cpf="${cadastro.cpf}"`);
 
   const tiposParaValidar = (reenvio ? tiposReenvio : (Object.keys(fileKeys) as TipoDocumento[]));
+  const comprovanteDeclaradoTerceiro =
+    comprovanteTerceiro && tiposParaValidar.includes('comprovante');
 
   // Presigned URLs dos arquivos enviados agora
   const urls: Record<string, string> = {};
@@ -75,6 +80,8 @@ async function executarPipeline(
   // Monta tarefas de validação (executadas em paralelo)
   const tarefas: TarefaValidacao[] = [];
   for (const tipo of tiposParaValidar) {
+    if (tipo === 'comprovante' && comprovanteDeclaradoTerceiro) continue;
+
     const url = urls[tipo];
     switch (tipo) {
       case 'cnh': tarefas.push({ tipo: 'cnh', fn: () => validarCNH(url) }); break;
@@ -120,6 +127,17 @@ async function executarPipeline(
 
   // ── Cruzamento unificado (fonte única; placa entre fontes incluída aqui) ──
   const { statusPorDoc, motivos, validacaoIA } = avaliarCruzamento(extraidos, cadastro);
+
+  if (comprovanteDeclaradoTerceiro) {
+    extraidos.comprovante = {
+      aprovadoRegraPropria: true,
+      motivo: MOTIVO_COMPROVANTE_TERCEIRO,
+      dadosExtraidos: { comprovanteTerceiro: true },
+    };
+    statusPorDoc.comprovante = 'analise_manual';
+    motivos.comprovante = MOTIVO_COMPROVANTE_TERCEIRO;
+    validacaoIA.comprovanteNomeDivergente = true;
+  }
 
   // ── Monta documentos finais + 1 WRITE consolidado ──
   const docsFinais: DocumentosMap = { ...docAtual };
@@ -193,7 +211,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body: IniciarBody = await req.json();
-    const { documentos: fileKeys, reenvio = false, tiposReenvio = [] } = body;
+    const { documentos: fileKeys, reenvio = false, tiposReenvio = [], comprovanteTerceiro = false } = body;
 
     if (!fileKeys || Object.keys(fileKeys).length === 0) {
       return NextResponse.json({ error: 'Nenhum documento informado' }, { status: 400 });
@@ -207,7 +225,7 @@ export async function POST(req: NextRequest) {
       { $set: { statusDocumentos: 'PROCESSANDO' } }
     );
 
-    executarPipeline(payload.formCode, payload.cpf, fileKeys, reenvio, tiposReenvio).catch((err) => {
+    executarPipeline(payload.formCode, payload.cpf, fileKeys, reenvio, tiposReenvio, comprovanteTerceiro === true).catch((err) => {
       console.error('[validacao/iniciar] Erro no pipeline:', err);
     });
 
