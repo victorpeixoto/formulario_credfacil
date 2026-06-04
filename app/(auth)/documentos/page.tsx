@@ -21,6 +21,14 @@ interface ItemEnviado {
 
 const ORDEM: TipoDocumento[] = ['cnh', 'comprovante', 'selfie', 'videoApp', 'videoVeiculo'];
 
+const MODO_POR_TIPO: Record<TipoDocumento, Exclude<ModoCaptura, null>> = {
+  cnh: 'documento-cnh',
+  comprovante: 'documento-comprovante',
+  selfie: 'selfie',
+  videoApp: 'videoApp',
+  videoVeiculo: 'videoVeiculo',
+};
+
 const TITULOS: Record<TipoDocumento, { titulo: string; subtitulo: string }> = {
   cnh: {
     titulo: 'Sua CNH',
@@ -83,6 +91,13 @@ export default function PageDocumentos() {
 
   const tipoAtual = ORDEM[passo];
   const todosCompletos = ORDEM.every((t) => enviados[t]?.fileKey);
+  const modoCapturaAtual = tipoAtual && modoCaptura === MODO_POR_TIPO[tipoAtual] ? modoCaptura : null;
+
+  const voltarPasso = () => {
+    setErroUpload(null);
+    setModoCaptura(null);
+    setPasso((p) => Math.max(p - 1, 0));
+  };
 
   // Mostrar loading enquanto verifica redirect
   if (verificandoRedirect) {
@@ -166,7 +181,7 @@ export default function PageDocumentos() {
   };
 
   // Tela de captura ativa
-  if (modoCaptura === 'selfie') {
+  if (modoCapturaAtual === 'selfie') {
     return (
       <CapturaSelfie
         onCancelar={() => setModoCaptura(null)}
@@ -186,7 +201,7 @@ export default function PageDocumentos() {
         totalPassos={ORDEM.length}
         titulo="Tudo pronto!"
         subtitulo="Confira seus documentos antes de enviar para análise."
-        onVoltar={() => setPasso(ORDEM.length - 1)}
+        onVoltar={voltarPasso}
       >
         <div className="flex flex-col gap-3 mt-2">
           {ORDEM.map((tipo) => {
@@ -249,30 +264,30 @@ export default function PageDocumentos() {
       totalPassos={ORDEM.length}
       titulo={titulo.titulo}
       subtitulo={titulo.subtitulo}
-      onVoltar={passo > 0 ? () => setPasso(passo - 1) : undefined}
+      onVoltar={passo > 0 ? voltarPasso : undefined}
     >
-      {modoCaptura === 'documento-cnh' && (
+      {modoCapturaAtual === 'documento-cnh' && (
         <CapturaDocumento
           tipo="cnh"
           onCancelar={() => setModoCaptura(null)}
           onConfirmar={(file, url) => fazerUpload('cnh', file, url)}
         />
       )}
-      {modoCaptura === 'documento-comprovante' && (
+      {modoCapturaAtual === 'documento-comprovante' && (
         <CapturaDocumento
           tipo="comprovante"
           onCancelar={() => setModoCaptura(null)}
           onConfirmar={(file, url) => fazerUpload('comprovante', file, url)}
         />
       )}
-      {modoCaptura === 'videoApp' && (
+      {modoCapturaAtual === 'videoApp' && (
         <CapturaVideo
           tipo="videoApp"
           onCancelar={() => setModoCaptura(null)}
           onConfirmar={(file, url) => fazerUpload('videoApp', file, url)}
         />
       )}
-      {modoCaptura === 'videoVeiculo' && (
+      {modoCapturaAtual === 'videoVeiculo' && (
         <CapturaVideo
           tipo="videoVeiculo"
           onCancelar={() => setModoCaptura(null)}
@@ -280,7 +295,7 @@ export default function PageDocumentos() {
         />
       )}
 
-      {!modoCaptura && (
+      {!modoCapturaAtual && (
         <div className="flex flex-col gap-5 flex-1">
           {itemAtual?.enviando && (
             <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex items-center gap-3">
@@ -367,7 +382,7 @@ export default function PageDocumentos() {
                 textoExecutando="Abrindo..."
                 onClick={() => acaoAbrirCaptura.executar(() => abrirCapturaPara(tipoAtual))}
               >
-                {tipoAtual.startsWith('video') ? 'Continuar' : tipoAtual === 'selfie' ? 'Abrir câmera' : 'Enviar documento'}
+                {tipoAtual.startsWith('video') ? 'Continuar' : tipoAtual === 'selfie' ? 'Abrir câmera' : tipoAtual === 'cnh' ? 'Escolher PDF da CNH Digital' : 'Enviar documento'}
               </BotaoPrincipal>
             )}
 

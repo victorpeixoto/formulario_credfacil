@@ -133,7 +133,7 @@ export default function CapturaDocumento({ tipo, onConfirmar, onCancelar }: Capt
       <input
         ref={inputArquivoRef}
         type="file"
-        accept={cnhSomentePdf ? '.pdf' : 'image/*,.pdf'}
+        accept={cnhSomentePdf ? 'application/pdf,.pdf' : 'image/*,.pdf'}
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0];
