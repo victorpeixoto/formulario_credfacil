@@ -15,9 +15,9 @@ const TAMANHO_MAX_MB = 50;
 const CONFIG: Record<TipoDoc, { dicas: string[]; aviso?: string }> = {
   cnh: {
     dicas: [
-      'Foto da CNH aberta (frente e verso) ou PDF.',
-      'Todos os campos legíveis: nome, CPF, validade.',
-      'Sem reflexos ou cortes nas bordas.',
+      'Abra o app CNH Digital e exporte sua CNH como PDF.',
+      'Envie o PDF aqui; é o formato exigido para a conferência.',
+      'Confira que nome, CPF e validade aparecem no documento.',
     ],
   },
   comprovante: {
@@ -32,6 +32,7 @@ const CONFIG: Record<TipoDoc, { dicas: string[]; aviso?: string }> = {
 
 export default function CapturaDocumento({ tipo, onConfirmar, onCancelar }: CapturaDocumentoProps) {
   const config = CONFIG[tipo];
+  const cnhSomentePdf = tipo === 'cnh';
   const inputCameraRef = useRef<HTMLInputElement>(null);
   const inputArquivoRef = useRef<HTMLInputElement>(null);
   const [arquivo, setArquivo] = useState<{ file: File; url?: string } | null>(null);
@@ -39,6 +40,10 @@ export default function CapturaDocumento({ tipo, onConfirmar, onCancelar }: Capt
 
   const handleArquivo = (file: File) => {
     setErro(null);
+    if (cnhSomentePdf && !file.name.toLowerCase().endsWith('.pdf')) {
+      setErro('Envie a CNH em PDF exportado do app CNH Digital.');
+      return;
+    }
     if (file.size > TAMANHO_MAX_MB * 1024 * 1024) {
       setErro(`Arquivo muito grande (máximo ${TAMANHO_MAX_MB}MB).`);
       return;
@@ -112,21 +117,23 @@ export default function CapturaDocumento({ tipo, onConfirmar, onCancelar }: Capt
 
       {erro && <p className="text-red-500 text-sm">{erro}</p>}
 
-      <input
-        ref={inputCameraRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) handleArquivo(file);
-        }}
-      />
+      {!cnhSomentePdf && (
+        <input
+          ref={inputCameraRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleArquivo(file);
+          }}
+        />
+      )}
       <input
         ref={inputArquivoRef}
         type="file"
-        accept="image/*,.pdf"
+        accept={cnhSomentePdf ? '.pdf' : 'image/*,.pdf'}
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0];
@@ -135,21 +142,23 @@ export default function CapturaDocumento({ tipo, onConfirmar, onCancelar }: Capt
       />
 
       <div className="flex flex-col gap-3 mt-auto">
-        <button
-          onClick={() => inputCameraRef.current?.click()}
-          className="w-full py-4 rounded-2xl bg-green-500 hover:bg-green-600 active:scale-95 text-white font-semibold text-lg transition-all flex items-center justify-center gap-2"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24">
-            <path d="M3 9a2 2 0 012-2h.93a2 2 0 001.66-.9l.81-1.2A2 2 0 0110.07 4h3.86a2 2 0 011.67.9l.8 1.2A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" stroke="currentColor" strokeWidth="2" />
-            <circle cx="12" cy="13" r="3" stroke="currentColor" strokeWidth="2" />
-          </svg>
-          Tirar foto agora
-        </button>
+        {!cnhSomentePdf && (
+          <button
+            onClick={() => inputCameraRef.current?.click()}
+            className="w-full py-4 rounded-2xl bg-green-500 hover:bg-green-600 active:scale-95 text-white font-semibold text-lg transition-all flex items-center justify-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24">
+              <path d="M3 9a2 2 0 012-2h.93a2 2 0 001.66-.9l.81-1.2A2 2 0 0110.07 4h3.86a2 2 0 011.67.9l.8 1.2A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" stroke="currentColor" strokeWidth="2" />
+              <circle cx="12" cy="13" r="3" stroke="currentColor" strokeWidth="2" />
+            </svg>
+            Tirar foto agora
+          </button>
+        )}
         <button
           onClick={() => inputArquivoRef.current?.click()}
           className="w-full py-3 rounded-2xl border border-gray-200 text-gray-700 font-medium text-sm hover:bg-gray-50 active:scale-95 transition-all"
         >
-          Escolher arquivo do celular
+          {cnhSomentePdf ? 'Escolher PDF da CNH Digital' : 'Escolher arquivo do celular'}
         </button>
         <button
           onClick={onCancelar}

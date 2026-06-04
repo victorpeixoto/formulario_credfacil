@@ -24,7 +24,7 @@ const ORDEM: TipoDocumento[] = ['cnh', 'comprovante', 'selfie', 'videoApp', 'vid
 const TITULOS: Record<TipoDocumento, { titulo: string; subtitulo: string }> = {
   cnh: {
     titulo: 'Sua CNH',
-    subtitulo: 'Vamos começar pela sua habilitação. Frente e verso, bem legível.',
+    subtitulo: 'Envie sua CNH em PDF, exportado do app CNH Digital (Carteira Digital de Trânsito). É o formato que garante a leitura correta dos seus dados.',
   },
   comprovante: {
     titulo: 'Comprovante de residência',

@@ -6,6 +6,8 @@ const MODEL = 'gemini-2.5-flash';
 const RETRY_DELAY_MS = 5000;
 const MAX_RETRIES = 2;
 
+type InlineDataPart = { inlineData: { data: string; mimeType: string } };
+
 async function downloadAsBase64(url: string): Promise<{ data: string; mimeType: string }> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Falha ao baixar arquivo: ${res.status}`);
@@ -13,6 +15,43 @@ async function downloadAsBase64(url: string): Promise<{ data: string; mimeType: 
   const data = Buffer.from(buffer).toString('base64');
   const mimeType = res.headers.get('content-type') || 'application/octet-stream';
   return { data, mimeType };
+}
+
+async function pdfParaInlineData(buffer: Buffer): Promise<InlineDataPart[]> {
+  const { pdf } = await import('pdf-to-img');
+  const pages = await pdf(buffer, { scale: 2 });
+  const imagens: InlineDataPart[] = [];
+
+  for await (const page of pages) {
+    imagens.push({
+      inlineData: {
+        data: Buffer.from(page).toString('base64'),
+        mimeType: 'image/png',
+      },
+    });
+  }
+
+  if (imagens.length === 0) throw new Error('PDF não contém páginas');
+  return imagens;
+}
+
+async function downloadAsInlineData(url: string): Promise<InlineDataPart[]> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Falha ao baixar arquivo: ${res.status}`);
+
+  const buffer = Buffer.from(await res.arrayBuffer());
+  const mimeType = res.headers.get('content-type')?.split(';')[0]?.trim() || 'application/octet-stream';
+
+  if (mimeType === 'application/pdf') {
+    return pdfParaInlineData(buffer);
+  }
+
+  return [{
+    inlineData: {
+      data: buffer.toString('base64'),
+      mimeType,
+    },
+  }];
 }
 
 function extrairJSON(text: string): Record<string, unknown> {
@@ -44,10 +83,10 @@ export async function analisarImagem(
 ): Promise<Record<string, unknown>> {
   return chamarComRetry(async () => {
     const model = genAI.getGenerativeModel({ model: MODEL });
-    const { data, mimeType } = await downloadAsBase64(imageUrl);
+    const inlineData = await downloadAsInlineData(imageUrl);
     const result = await model.generateContent([
       prompt,
-      { inlineData: { data, mimeType } },
+      ...inlineData,
     ]);
     const text = result.response.text();
     return extrairJSON(text);
