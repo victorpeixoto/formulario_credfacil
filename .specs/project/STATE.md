@@ -1,7 +1,23 @@
 # State
 
-**Last updated:** 2026-06-01
-**Session:** Implementação da refatoração do pipeline (T1–T11)
+**Last updated:** 2026-06-04
+**Session:** Spec dos 5 ajustes em progresso da Verificação de Documentos com IA
+
+---
+
+## Current Focus (2026-06-04)
+
+Criadas **4 features separadas** (uma por card, a pedido), todas em `.specs/features/` com `spec.md` + `design.md` + `tasks.md`. Lista ClickUp 901327209475, todas `in progress` / *high*. (O 5º card original, `86ahw4ktu` "PDF preferencial/flexibilizar sombra", foi **descartado e consolidado** no card de CNH.)
+
+1. `20260604-continuar-com-item-rejeitado` — `86ahw4mfb` — vídeo do veículo rejeitado **não bloqueia** o botão "Continuar Análise → WhatsApp" na tela de status (`app/(auth)/status/page.tsx`: `SecaoContato` hoje só em `APROVADO`/`ANALISE_MANUAL`; liberar em `PENDENCIA` quando `videoVeiculo` rejeitado), mantendo o reenvio. Sem mudança no pipeline.
+2. `20260604-remover-validacao-placa-video-veiculo` — `86ahw4mc7` — cruzamento de placa em `avaliar-cruzamento.ts` passa a ser **só selfie × vídeo do app** (remover `videoVeiculo?.placa` da linha ~144 e do loop de rejeição ~169; ajustar `MOTIVO_PLACA`); `video-veiculo.ts` para de extrair placa.
+3. `20260604-instrucoes-cnh-digital` — `86ahw4m0p` (+ relacionada `86ahw4m6u`) — **spec consolidada da CNH**: (a) cópia PDF obrigatório do app CNH Digital, (b) captura aceita só `.pdf` para a CNH (enforcement absorvido do `86ahw4ktu`), (c) **validade ≥ 30 dias** em `cnh.ts` + `DIAS_MINIMOS_VALIDADE_CNH=30` no `config.ts`.
+4. `20260604-fluxo-alternativo-comprovante-residencia` — `86ahf4g21` — **escopo enxuto**: apenas CTA "comprovante não está no meu nome" → afirmar terceiro/parente → texto "enviar doc do titular na próxima etapa" → `analise_manual`. Reaproveita `determinar-status.ts` e o banner da tela de status (~274-301).
+
+Ordem sugerida: 1 → 2 → 3 → 4.
+Decisões em aberto (card 1): liberar WhatsApp sempre que vídeo do veículo rejeitado vs. só quando é a única rejeição.
+Decisões em aberto (card 3): exceção para quem não tem CNH Digital (bloquear foto totalmente vs. permitir como exceção).
+Decisões em aberto (card 4): coletar grau de parentesco ou só afirmar; reusar `comprovanteNomeDivergente` vs. flag nova.
 
 ---
 
