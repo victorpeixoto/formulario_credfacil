@@ -26,6 +26,10 @@ function extrairPrimeiroNome(nomeCompleto: string): string {
   return partes[0].charAt(0).toUpperCase() + partes[0].slice(1).toLowerCase();
 }
 
+function temVideoVeiculoRejeitado(dados?: DadosCandidato | null): boolean {
+  return dados?.documentos.videoVeiculo?.status === 'rejeitado';
+}
+
 export default function PagePortal() {
   const [dados, setDados] = useState<DadosCandidato | null>(null);
   const [carregando, setCarregando] = useState(true);
@@ -34,6 +38,7 @@ export default function PagePortal() {
   const [whatsappCarregando, setWhatsappCarregando] = useState(false);
   const [reconectando, setReconectando] = useState(false);
   const esRef = useRef<EventSource | null>(null);
+  const videoVeiculoRejeitadoRef = useRef(false);
 
   // Buscar dados do candidato
   const carregarDados = useCallback(async () => {
@@ -41,6 +46,7 @@ export default function PagePortal() {
       const res = await fetch('/api/candidato');
       if (!res.ok) return;
       const json = await res.json();
+      videoVeiculoRejeitadoRef.current = temVideoVeiculoRejeitado(json);
       setDados(json);
       return json as DadosCandidato;
     } catch {
@@ -75,6 +81,10 @@ export default function PagePortal() {
 
     es.addEventListener('documento', (e) => {
       const evento = JSON.parse(e.data);
+      const statusMapeado = mapearStatus(evento.status);
+      if (evento.tipo === 'videoVeiculo') {
+        videoVeiculoRejeitadoRef.current = statusMapeado === 'rejeitado';
+      }
       setDados((prev) => {
         if (!prev) return prev;
         return {
@@ -83,7 +93,7 @@ export default function PagePortal() {
             ...prev.documentos,
             [evento.tipo]: {
               ...prev.documentos[evento.tipo as TipoDocumento],
-              status: mapearStatus(evento.status),
+              status: statusMapeado,
               motivo: evento.resultado?.motivo ?? prev.documentos[evento.tipo as TipoDocumento]?.motivo ?? null,
             },
           },
@@ -100,7 +110,10 @@ export default function PagePortal() {
       } : prev);
       es.close();
 
-      if (evento.statusFinal === 'APROVADO' || evento.statusFinal === 'ANALISE_MANUAL') {
+      const contatoPorStatusFinal = evento.statusFinal === 'APROVADO' || evento.statusFinal === 'ANALISE_MANUAL';
+      const contatoPorVideoRejeitado = evento.statusFinal === 'PENDENCIA' && videoVeiculoRejeitadoRef.current;
+
+      if (contatoPorStatusFinal || contatoPorVideoRejeitado) {
         buscarWhatsApp();
       }
     });
@@ -126,7 +139,13 @@ export default function PagePortal() {
     carregarDados().then((d) => {
       if (d && d.statusDocumentos === 'PROCESSANDO') {
         conectarSSE();
-      } else if (d && (d.statusDocumentos === 'APROVADO' || d.statusDocumentos === 'ANALISE_MANUAL')) {
+      } else if (
+        d && (
+          d.statusDocumentos === 'APROVADO' ||
+          d.statusDocumentos === 'ANALISE_MANUAL' ||
+          (d.statusDocumentos === 'PENDENCIA' && temVideoVeiculoRejeitado(d))
+        )
+      ) {
         buscarWhatsApp();
       }
     });
@@ -187,6 +206,8 @@ export default function PagePortal() {
   const temPendencia = statusFinal === 'PENDENCIA';
   const aprovado = statusFinal === 'APROVADO';
   const analiseManual = statusFinal === 'ANALISE_MANUAL';
+  const videoVeiculoRejeitado = temVideoVeiculoRejeitado(dados);
+  const mostrarContatoPendenciaVideo = temPendencia && videoVeiculoRejeitado;
 
   // Calcular progresso
   const totalAprovados = TIPOS.filter((t) => dados.documentos[t]?.status === 'aprovado').length;
@@ -260,13 +281,20 @@ export default function PagePortal() {
 
       {/* Banner de pendência */}
       {temPendencia && (
-        <div className="px-6 pb-6">
+        <div className="px-6 pb-6 flex flex-col gap-4">
           <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 text-center">
             <p className="text-orange-800 text-sm font-semibold">Documentos pendentes</p>
             <p className="text-orange-600 text-xs mt-1">
               Toque nos documentos rejeitados acima para reenviá-los.
             </p>
           </div>
+          {mostrarContatoPendenciaVideo && (
+            <SecaoContato
+              whatsappLink={whatsappLink}
+              carregando={whatsappCarregando}
+              variante="pendencia"
+            />
+          )}
         </div>
       )}
 

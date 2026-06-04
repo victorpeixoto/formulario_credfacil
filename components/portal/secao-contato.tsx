@@ -3,12 +3,26 @@
 interface SecaoContatoProps {
   whatsappLink: string | null;
   carregando?: boolean;
+  variante?: 'aprovado' | 'pendencia';
 }
 
-export default function SecaoContato({ whatsappLink, carregando }: SecaoContatoProps) {
+const textos = {
+  aprovado: {
+    titulo: 'Documentos aprovados!',
+    descricao: 'Todos os seus documentos foram verificados com sucesso. Fale com a nossa equipe para finalizar o contrato.',
+  },
+  pendencia: {
+    titulo: 'Continuar análise com a equipe',
+    descricao: 'Seu vídeo do veículo precisa de ajuste. Você pode falar com a nossa equipe pelo WhatsApp ou reenviar um novo vídeo.',
+  },
+};
+
+export default function SecaoContato({ whatsappLink, carregando, variante = 'aprovado' }: SecaoContatoProps) {
+  const texto = textos[variante];
+
   return (
     <div className="flex flex-col items-center gap-5 py-2">
-      {/* Ícone de sucesso */}
+      {/* Ícone de status */}
       <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
         <svg className="w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24">
           <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -16,9 +30,9 @@ export default function SecaoContato({ whatsappLink, carregando }: SecaoContatoP
       </div>
 
       <div className="text-center">
-        <h2 className="text-lg font-bold text-gray-900">Documentos aprovados!</h2>
+        <h2 className="text-lg font-bold text-gray-900">{texto.titulo}</h2>
         <p className="text-gray-500 text-sm mt-1">
-          Todos os seus documentos foram verificados com sucesso. Fale com a nossa equipe para finalizar o contrato.
+          {texto.descricao}
         </p>
       </div>
 
