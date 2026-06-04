@@ -85,7 +85,5 @@ export interface ResultadoVideoApp {
 
 export interface ResultadoVideoVeiculo {
   veiculoLigado: boolean;
-  placaVisivel: boolean;
-  placa: string | null;
   temCortes: boolean;
 }

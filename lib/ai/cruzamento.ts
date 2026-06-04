@@ -61,7 +61,6 @@ export function cruzarDados(resultados: ResultadosTodos, cadastro: DadosCadastro
   const comp = resultados.comprovante?.dadosExtraidos;
   const selfie = resultados.selfie?.dadosExtraidos;
   const videoApp = resultados.videoApp?.dadosExtraidos;
-  const videoVeiculo = resultados.videoVeiculo?.dadosExtraidos;
   const biometria = resultados.biometria?.dadosExtraidos;
 
   // Nome do cadastro confere com CNH (Levenshtein >= 85)
@@ -121,9 +120,9 @@ export function cruzarDados(resultados: ResultadosTodos, cadastro: DadosCadastro
     console.log(`[cruzamento] cadastro:    log="${cadastro.logradouro}" n="${cadastro.numero}" bairro="${cadastro.bairro}" cidade="${cadastro.cidade}" uf="${cadastro.estadoUF}" cep="${cadastro.cep}"`);
   }
 
-  // Placa confere: >= 2 de 3 fontes iguais
+  // Placa confere: selfie × vídeo do app
   let placaConfere: boolean | null = null;
-  const placas = [selfie?.placa, videoApp?.placa, videoVeiculo?.placa]
+  const placas = [selfie?.placa, videoApp?.placa]
     .filter(Boolean)
     .map((p) => p!.replace(/\s/g, '').toUpperCase());
 

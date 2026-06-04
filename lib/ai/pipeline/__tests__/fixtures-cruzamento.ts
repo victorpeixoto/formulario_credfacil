@@ -143,16 +143,16 @@ export const casos: CasoFixture[] = [
   },
   {
     nome: 'placa-divergente-entre-fontes',
-    descricao: 'Placas diferentes entre selfie, vídeo do app e vídeo do veículo → rejeita os três',
+    descricao: 'Placa da selfie diverge da do vídeo do app → rejeita só esses dois; vídeo do veículo permanece aprovado',
     cadastro: CADASTRO,
     extraidos: {
       cnh: cnhOk,
       selfie: { aprovadoRegraPropria: true, motivo: null, dadosExtraidos: { pessoaVisivel: true, veiculoVisivel: true, placaVisivel: true, placa: 'ABC1D23', aparentementeAutentica: true } },
       videoApp: { aprovadoRegraPropria: true, motivo: null, dadosExtraidos: { nomePerfil: 'JOAO DA SILVA SANTOS', placa: 'XYZ9K88', temCortes: false, formatoGanhos: 'mensal' } },
-      videoVeiculo: { aprovadoRegraPropria: true, motivo: null, dadosExtraidos: { veiculoLigado: true, placaVisivel: true, placa: 'QRS4T55', temCortes: false } },
+      videoVeiculo: { aprovadoRegraPropria: true, motivo: null, dadosExtraidos: { veiculoLigado: true, temCortes: false } },
     },
     intent: {
-      statusPorDoc: { selfie: 'rejeitado', videoApp: 'rejeitado', videoVeiculo: 'rejeitado' },
+      statusPorDoc: { selfie: 'rejeitado', videoApp: 'rejeitado', videoVeiculo: 'aprovado' },
       validacaoIA: { placaConfere: false },
     },
   },

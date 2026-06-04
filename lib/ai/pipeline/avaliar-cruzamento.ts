@@ -14,7 +14,7 @@ const MOTIVO_CNH_CPF = 'CPF da CNH não confere com o cadastro';
 const MOTIVO_CNH_NOME = 'Nome da CNH não confere com o cadastro';
 const MOTIVO_COMPROVANTE_ENDERECO = 'Endereço do comprovante não confere com o cadastro';
 const MOTIVO_VIDEOAPP_NOME = 'Nome do perfil no app não confere com o cadastro';
-const MOTIVO_PLACA = 'Placa divergente entre selfie, vídeo do app e vídeo do veículo';
+const MOTIVO_PLACA = 'Placa divergente entre selfie e vídeo do app';
 
 const somenteDigitos = (s: string): string => s.replace(/\D/g, '');
 
@@ -53,7 +53,6 @@ export function avaliarCruzamento(
   const comp = extraidos.comprovante?.dadosExtraidos;
   const selfie = extraidos.selfie?.dadosExtraidos;
   const videoApp = extraidos.videoApp?.dadosExtraidos;
-  const videoVeiculo = extraidos.videoVeiculo?.dadosExtraidos;
   const biometria = extraidos.biometria?.dadosExtraidos;
 
   const statusPorDoc: ResultadoCruzamento['statusPorDoc'] = {};
@@ -104,7 +103,9 @@ export function avaliarCruzamento(
     }
   }
 
-  // ── Selfie e Vídeo do veículo (sem regra de cruzamento própria; placa tratada adiante) ──
+  // ── Selfie e Vídeo do veículo (sem regra de cruzamento própria) ──
+  // Obs.: o vídeo do veículo não participa do cruzamento de placa; a placa da
+  // selfie é tratada adiante (cruzamento selfie × vídeo do app).
   for (const tipo of ['selfie', 'videoVeiculo'] as const) {
     const entrada = extraidos[tipo];
     if (entrada) {
@@ -141,7 +142,7 @@ export function avaliarCruzamento(
   const cpfConfere = cnh?.cpf ? somenteDigitos(String(cnh.cpf)) === somenteDigitos(cadastro.cpf) : null;
 
   let placaConfere: boolean | null = null;
-  const placas = [selfie?.placa, videoApp?.placa, videoVeiculo?.placa]
+  const placas = [selfie?.placa, videoApp?.placa]
     .filter(Boolean)
     .map((p) => String(p).replace(/\s/g, '').toUpperCase());
   if (placas.length >= 2) {
@@ -164,9 +165,9 @@ export function avaliarCruzamento(
     comprovanteNomeDivergente,
   };
 
-  // ── Placa divergente entre fontes → rejeita selfie / vídeo do app / vídeo do veículo ──
+  // ── Placa divergente entre fontes → rejeita selfie / vídeo do app ──
   if (placaConfere === false) {
-    for (const tipo of ['selfie', 'videoApp', 'videoVeiculo'] as const) {
+    for (const tipo of ['selfie', 'videoApp'] as const) {
       if (extraidos[tipo]) {
         statusPorDoc[tipo] = 'rejeitado' as StatusDocumento;
         motivos[tipo] = MOTIVO_PLACA;

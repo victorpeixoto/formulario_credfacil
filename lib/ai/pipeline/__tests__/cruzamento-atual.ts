@@ -4,7 +4,7 @@
 //   1. regra própria do doc (aprovadoRegraPropria) + cruzamento inline por doc;
 //   2. comprovante aprovado com nome de terceiro → analise_manual;
 //   3. validacaoIA global via cruzarDados;
-//   4. placa divergente entre fontes → rejeita selfie/videoApp/videoVeiculo.
+//   4. placa divergente entre fontes → rejeita selfie/videoApp.
 //
 // Serve de baseline para a refatoração: `avaliarCruzamento` (módulo unificado)
 // deve produzir a MESMA saída que este oráculo para os vetores de regressão.
@@ -16,7 +16,7 @@ import type { DadosExtraidosMap, ResultadoCruzamento } from '@/lib/ai/pipeline/t
 import type { StatusDocumento, TipoDocumento } from '@/types/documentos';
 
 const DOCS: TipoDocumento[] = ['cnh', 'comprovante', 'selfie', 'videoApp', 'videoVeiculo'];
-const MOTIVO_PLACA = 'Placa divergente entre selfie, vídeo do app e vídeo do veículo';
+const MOTIVO_PLACA = 'Placa divergente entre selfie e vídeo do app';
 
 export function avaliarCruzamentoAtual(
   extraidos: DadosExtraidosMap,
@@ -67,7 +67,7 @@ export function avaliarCruzamentoAtual(
   const validacaoIA = cruzarDados(resultadosParaCruzamento, cadastro);
 
   if (validacaoIA.placaConfere === false) {
-    for (const tipo of ['selfie', 'videoApp', 'videoVeiculo'] as const) {
+    for (const tipo of ['selfie', 'videoApp'] as const) {
       if (extraidos[tipo]) {
         statusPorDoc[tipo] = 'rejeitado';
         motivos[tipo] = MOTIVO_PLACA;

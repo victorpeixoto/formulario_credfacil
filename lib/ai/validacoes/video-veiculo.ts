@@ -3,14 +3,11 @@ import type { ResultadoVideoVeiculo } from '@/types/documentos';
 
 const PROMPT = `Analise este vídeo de um veículo e extraia:
 1. O veículo aparenta estar ligado (painel aceso, motor funcionando)?
-2. A placa do veículo está visível? Se sim, qual o texto?
-3. O vídeo apresenta cortes ou edição visível?
+2. O vídeo apresenta cortes ou edição visível?
 
 Responda APENAS em JSON:
 {
   "veiculoLigado": true,
-  "placaVisivel": true,
-  "placa": "...",
   "temCortes": false
 }`;
 
