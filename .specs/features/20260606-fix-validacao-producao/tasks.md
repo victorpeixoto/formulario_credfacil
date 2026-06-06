@@ -7,7 +7,8 @@
 
 - **Concluído:** T1, T2, T3, T5, T6, T7, T8, T9, T10.
 - **Pendente:** T4 validação no container/staging com PDF real.
-- **Validações concluídas:** `npm ls @napi-rs/canvas`, `npm test` (34/34), `npx tsc --noEmit`, `npx eslint` nos arquivos tocados, `docker build -t formulario-credfacil-docker-validate .`, `createCanvas(1,1)` dentro do container, `/api/health` com status `healthy`.
+- **Validações concluídas:** `npm ls @napi-rs/canvas pdf-to-img pdfjs-dist`, `npm test` (34/34), `npx tsc --noEmit`, `npx eslint` nos arquivos tocados, `docker build -t formulario-credfacil-docker-validate .`, `require.resolve('pdfjs-dist/package.json')` dentro do container, `import('pdf-to-img')` dentro do container, `createCanvas(1,1)` dentro do container, `/api/health` com status `healthy`.
+- **Correção pós-deploy:** além de `@napi-rs/canvas`, `pdf-to-img` precisa encontrar `pdfjs-dist/package.json` em runtime; `pdfjs-dist@5.4.624` foi declarado e copiado explicitamente para o runner.
 
 ---
 
@@ -51,6 +52,7 @@ Track A e Track B são **independentes** entre si e podem ser tocados em paralel
 
 **Done when**:
 - [x] `@napi-rs/canvas` listado em `dependencies`
+- [x] `pdfjs-dist` listado em `dependencies`
 - [x] `npm install` roda sem erro e atualiza `package-lock.json`
 - [x] `npm install` baixa o binário nativo da plataforma local sem falha
 
@@ -72,7 +74,9 @@ Track A e Track B são **independentes** entre si e podem ser tocados em paralel
 
 **Done when**:
 - [x] `serverExternalPackages` inclui `'@napi-rs/canvas'`
+- [x] `serverExternalPackages` inclui `'pdfjs-dist'`
 - [x] `outputFileTracingIncludes['/api/validacao/iniciar']` inclui globs `./node_modules/@napi-rs/canvas/**/*` e `./node_modules/@napi-rs/canvas-*/**/*`
+- [x] `outputFileTracingIncludes['/api/validacao/iniciar']` inclui glob `./node_modules/pdfjs-dist/**/*`
 - [x] `npx tsc --noEmit` limpo
 - [x] `npm run build` conclui sem erro no build Docker
 
@@ -95,6 +99,7 @@ Após `npm run build`, confirmar que `.next/standalone/node_modules/@napi-rs/can
 **Done when**:
 - [ ] Se T2 já incluiu o binário → tarefa **dispensada** (registrar no STATE.md)
 - [x] Se aplicada → `COPY` presente
+- [x] Se aplicada → `COPY` de `pdfjs-dist` presente
 - [x] Se aplicada → imagem builda
 - [x] Permissões/owner consistentes com o usuário `nextjs`
 

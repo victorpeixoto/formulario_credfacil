@@ -31,6 +31,7 @@ RUN groupadd --system --gid 1001 nodejs \
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=deps --chown=nextjs:nodejs /app/node_modules/pdfjs-dist ./node_modules/pdfjs-dist
 COPY --from=deps --chown=nextjs:nodejs /app/node_modules/@napi-rs/canvas ./node_modules/@napi-rs/canvas
 COPY --from=deps --chown=nextjs:nodejs /app/node_modules/@napi-rs/canvas-linux-* ./node_modules/@napi-rs/
 
