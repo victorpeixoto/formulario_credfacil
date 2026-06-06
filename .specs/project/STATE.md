@@ -1,7 +1,31 @@
 # State
 
-**Last updated:** 2026-06-04
-**Session:** Spec dos 5 ajustes em progresso da Verificação de Documentos com IA
+**Last updated:** 2026-06-06
+**Session:** Spec da correção de falhas de validação em produção (PDF/canvas + 429 Gemini)
+
+---
+
+## Current Focus (2026-06-06)
+
+Feature **`20260606-fix-validacao-producao` parcialmente implementada** em 2026-06-06.
+- **Concluído:** T1-T3 e T5-T10 em `.specs/features/20260606-fix-validacao-producao/tasks.md`.
+- **Track A:** `@napi-rs/canvas@0.1.100` declarado em `dependencies` e dedupado com `pdfjs-dist`; `next.config.ts` inclui `@napi-rs/canvas` em `serverExternalPackages` e `outputFileTracingIncludes`; `Dockerfile` recebeu fallback `COPY` do pacote e dos binários Linux `@napi-rs/canvas-linux-*` com `--chown=nextjs:nodejs`; runner tem `HEALTHCHECK` em `/api/health` e usa apenas `curl` (sem `wget`).
+- **Track B:** `GeminiQuotaError` + `isQuotaError` em `lib/ai/gemini.ts`; 429/`RESOURCE_EXHAUSTED`/`credits are depleted` tenta no máximo 3 vezes no Gemini e não recebe retry extra em `executar-validacoes.ts`; `executarPipeline` dispara 1 alerta Telegram por execução com "Créditos Gemini esgotados — recarregar no AI Studio" quando há erro de cota.
+- **Testes/validações locais:** `npm ls @napi-rs/canvas` OK; `npm test` 34/34 verde; `npx tsc --noEmit` limpo; `npx eslint` nos arquivos tocados limpo; `docker build -t formulario-credfacil-docker-validate .` OK; dentro do container `createCanvas(1,1)` OK; `/api/health` OK e container `healthy`.
+- **Pendente:** T4 validação funcional em container/staging com PDF real (CNH/biometria) para confirmar ausência de `DOMMatrix is not defined` no fluxo completo.
+
+Criada feature **`20260606-fix-validacao-producao`** (`spec.md` + `design.md` + `tasks.md`) para dois erros de produção observados nos logs do `POST /api/validacao/iniciar`:
+
+1. **PDF não renderiza** (`cnh`/`biometria`): `@napi-rs/canvas` (dep nativa opcional do `pdfjs-dist` via `pdf-to-img`) ausente no `.next/standalone` do Docker → `DOMMatrix is not defined`. **Track A:** declarar dep em `package.json` + `outputFileTracingIncludes` no `next.config.ts` (+ fallback `COPY` no Dockerfile). Sem mudança de lógica.
+2. **Cota Gemini esgotada** (`comprovante`/`selfie`/vídeos): `429 prepayment credits depleted`. **Track B:** padronizar retry em **3 tentativas** (decisão do usuário); novo `GeminiQuotaError` em `gemini.ts` (autoridade do retry), `executarComRetry` não re-tenta cota (evita ~6 chamadas), erro → `PENDENCIA` (já existe via `determinar-status.ts`) + alerta Telegram de cota no `executarPipeline`.
+
+**Track C (P3):** runbooks (recarga de créditos Gemini + regressão do canvas) escritos dentro do `design.md`.
+
+**Decisões confirmadas (perguntas TLC):** 429 = manter retry, 3 tentativas, depois `PENDENCIA`, sem distinguir billing×rate-limit; runbook incluído no design; escopo P1+P2+P3.
+
+**Ação humana fora do código:** recarregar créditos / trocar `GEMINI_API_KEY` no AI Studio (resolve o 429 imediato).
+
+**Próximo passo:** aprovar tasks e implementar (Track A e Track B são independentes; ver `tasks.md`).
 
 ---
 
