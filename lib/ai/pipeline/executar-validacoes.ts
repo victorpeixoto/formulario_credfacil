@@ -1,3 +1,4 @@
+import { isGeminiQuotaError } from '@/lib/ai/gemini';
 import { TIMEOUT_VALIDACAO_MS } from './config';
 
 export interface ResultadoTarefa {
@@ -69,7 +70,7 @@ async function executarComRetry(
   try {
     return { status: 'fulfilled' as const, value: await executarTentativa() };
   } catch (e) {
-    if (e instanceof TimeoutValidacaoError || Date.now() >= deadline) {
+    if (e instanceof TimeoutValidacaoError || isGeminiQuotaError(e) || Date.now() >= deadline) {
       return { status: 'rejected' as const, reason: e };
     }
 

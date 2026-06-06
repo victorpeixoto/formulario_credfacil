@@ -50,3 +50,9 @@ test('fluxo principal aprovado permanece APROVADO', () => {
 
   assert.deepEqual(resultado, { status: 'APROVADO' });
 });
+
+test('documento com erro cai em PENDENCIA', () => {
+  const resultado = determinarStatusFinal(docs('erro'), validacaoIA(false));
+
+  assert.deepEqual(resultado, { status: 'PENDENCIA' });
+});

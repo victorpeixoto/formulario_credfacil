@@ -10,6 +10,7 @@ import { validarVideoApp } from '@/lib/ai/validacoes/video-app';
 import { validarVideoVeiculo } from '@/lib/ai/validacoes/video-veiculo';
 import { validarBiometria } from '@/lib/ai/validacoes/biometria';
 import { type DadosCadastro } from '@/lib/ai/cruzamento';
+import { isQuotaError } from '@/lib/ai/gemini';
 import { executarValidacoes, isErroTarefa, type TarefaValidacao } from '@/lib/ai/pipeline/executar-validacoes';
 import { avaliarCruzamento } from '@/lib/ai/pipeline/avaliar-cruzamento';
 import type { DadosExtraidosMap } from '@/lib/ai/pipeline/tipos-cruzamento';
@@ -101,6 +102,15 @@ async function executarPipeline(
 
   // ── Validações em PARALELO ──
   const resultados = await executarValidacoes(tarefas);
+  const tiposComErroCota = Array.from(resultados.entries())
+    .filter(([, resultado]) => isErroTarefa(resultado) && isQuotaError(resultado.erro))
+    .map(([tipo]) => tipo);
+
+  if (tiposComErroCota.length > 0) {
+    await sendTelegramAlert(
+      `*CRÉDITOS GEMINI ESGOTADOS*\n\nCréditos Gemini esgotados — recarregar no AI Studio.\nCandidato: \`${cpf}\`\nCódigo: \`${formCode}\`\nValidações afetadas: ${tiposComErroCota.join(', ')}`
+    );
+  }
 
   // Monta os dados extraídos para o cruzamento: resultados novos + dados já armazenados
   // (necessário p/ reenvio parcial — placa/nome dependem de documentos não reenviados).

@@ -8,6 +8,27 @@ const MAX_RETRIES = 2;
 
 type InlineDataPart = { inlineData: { data: string; mimeType: string } };
 
+export class GeminiQuotaError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'GeminiQuotaError';
+  }
+}
+
+export function isQuotaError(msg: string): boolean {
+  const normalized = msg.toLowerCase();
+  return msg.includes('429') ||
+    msg.includes('RESOURCE_EXHAUSTED') ||
+    normalized.includes('credits are depleted');
+}
+
+export function isGeminiQuotaError(err: unknown): boolean {
+  if (err instanceof GeminiQuotaError) return true;
+  if (err instanceof Error && err.name === 'GeminiQuotaError') return true;
+  const msg = err instanceof Error ? err.message : String(err);
+  return isQuotaError(msg);
+}
+
 async function downloadAsBase64(url: string): Promise<{ data: string; mimeType: string }> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Falha ao baixar arquivo: ${res.status}`);
@@ -60,18 +81,21 @@ function extrairJSON(text: string): Record<string, unknown> {
   return JSON.parse(jsonMatch[1]);
 }
 
-async function chamarComRetry(
+export async function chamarComRetry(
   fn: () => Promise<Record<string, unknown>>,
-  tentativa = 0
+  tentativa = 0,
+  retryDelayMs = RETRY_DELAY_MS
 ): Promise<Record<string, unknown>> {
   try {
     return await fn();
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
-    const is429 = msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED');
-    if (is429 && tentativa < MAX_RETRIES) {
-      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
-      return chamarComRetry(fn, tentativa + 1);
+    if (isQuotaError(msg)) {
+      if (tentativa < MAX_RETRIES) {
+        await new Promise((r) => setTimeout(r, retryDelayMs));
+        return chamarComRetry(fn, tentativa + 1, retryDelayMs);
+      }
+      throw new GeminiQuotaError(msg);
     }
     throw err;
   }

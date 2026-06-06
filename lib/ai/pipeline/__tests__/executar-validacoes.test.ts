@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { GeminiQuotaError } from '@/lib/ai/gemini';
 import { executarValidacoes, isErroTarefa, type TarefaValidacao } from '@/lib/ai/pipeline/executar-validacoes';
 
 test('executa em paralelo (sem delay sequencial entre tarefas)', async () => {
@@ -35,6 +36,26 @@ test('falha de uma tarefa não derruba as demais (allSettled + retry)', async ()
   const falha = res.get('falha');
   assert.ok(ok && !isErroTarefa(ok) && ok.aprovado === true);
   assert.ok(falha && isErroTarefa(falha) && falha.erro === 'boom');
+});
+
+test('erro de cota do Gemini nao dispara retry extra no executor', async () => {
+  let chamadas = 0;
+  const tarefas: TarefaValidacao[] = [
+    {
+      tipo: 'selfie',
+      fn: async () => {
+        chamadas += 1;
+        throw new GeminiQuotaError('429 Too Many Requests: credits are depleted');
+      },
+    },
+  ];
+
+  const res = await executarValidacoes(tarefas, { retryDelayMs: 1 });
+  const selfie = res.get('selfie');
+
+  assert.equal(chamadas, 1);
+  assert.ok(selfie && isErroTarefa(selfie));
+  assert.match(selfie.erro, /429/);
 });
 
 test('tarefa travada vira erro dentro do timeout configurado', async () => {
