@@ -71,6 +71,7 @@ export interface ResultadoBiometria {
 }
 
 export interface ResultadoVideoApp {
+  appTransporte: boolean;
   nomePerfil: string | null;
   placa: string | null;
   faturamento180d: string | null;

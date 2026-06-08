@@ -2,7 +2,13 @@ import { analisarVideo } from '../gemini';
 import { FATURAMENTO_MENSAL_MINIMO, MESES_FATURAMENTO } from '../pipeline/config';
 import type { ResultadoVideoApp } from '@/types/documentos';
 
-const PROMPT = `Analise este vídeo de gravação de tela de um aplicativo de transporte/entrega e extraia:
+const PROMPT = `Você recebe um vídeo enviado por um candidato. Ele DEVE ser uma gravação de tela (ou outro celular filmando a tela) de um aplicativo de transporte/entrega — iFood, Uber, 99, Rappi, etc. — mostrando o perfil e os ganhos mensais.
+
+PRIMEIRO, decida se o vídeo é REALMENTE isso:
+- Se o vídeo mostra a interface de um app de transporte/entrega com dados de perfil/ganhos → "appTransporte": true.
+- Se o vídeo for QUALQUER outra coisa (um carro, uma pessoa, uma rua, uma tela de outro tipo, vídeo aleatório, sem interface de app de transporte) → "appTransporte": false e retorne TODOS os demais campos como null (ou false/[] conforme o tipo). NÃO invente nome, placa, faturamento, ganhos ou qualquer dado que não esteja claramente visível na tela do app. É PROIBIDO adivinhar.
+
+Se "appTransporte" for true, extraia (apenas o que estiver visível; caso contrário null):
 1. Nome do perfil visível no app
 2. Placa do veículo (se visível no app)
 3. Faturamento dos últimos 180 dias (se visível)
@@ -23,6 +29,7 @@ IMPORTANTE sobre cortes/transições:
 
 Responda APENAS em JSON:
 {
+  "appTransporte": true,
   "nomePerfil": "...",
   "placa": "...",
   "faturamento180d": "...",
@@ -36,22 +43,26 @@ Responda APENAS em JSON:
   "fotoPerfilVisivel": true
 }`;
 
-export async function validarVideoApp(videoUrl: string): Promise<{
+export function validarRegraVideoApp(dados: ResultadoVideoApp): {
   aprovado: boolean;
   motivo: string | null;
-  dadosExtraidos: ResultadoVideoApp;
-}> {
-  const dados = (await analisarVideo(videoUrl, PROMPT)) as unknown as ResultadoVideoApp;
+} {
+  if (dados.appTransporte === false) {
+    return {
+      aprovado: false,
+      motivo:
+        'O vídeo não é uma gravação de tela de um aplicativo de transporte/entrega com os ganhos. Reenvie a gravação da tela do app (iFood, Uber, 99, etc.).',
+    };
+  }
 
   if (dados.temCortes) {
-    return { aprovado: false, motivo: 'Vídeo apresenta cortes ou edição', dadosExtraidos: dados };
+    return { aprovado: false, motivo: 'Vídeo apresenta cortes ou edição' };
   }
 
   if (dados.formatoGanhos === 'invalido') {
     return {
       aprovado: false,
       motivo: 'Ganhos não estão no formato mensal. Mostre mês a mês — não envie ganhos diários ou semanais.',
-      dadosExtraidos: dados,
     };
   }
 
@@ -60,7 +71,6 @@ export async function validarVideoApp(videoUrl: string): Promise<{
       return {
         aprovado: false,
         motivo: `Vídeo não mostra os ganhos dos últimos ${MESES_FATURAMENTO} meses completos.`,
-        dadosExtraidos: dados,
       };
     }
     // Ordena do mês mais antigo para o mais recente ("YYYY-MM")
@@ -74,10 +84,19 @@ export async function validarVideoApp(videoUrl: string): Promise<{
       return {
         aprovado: false,
         motivo: `Faturamento abaixo de R$ ${FATURAMENTO_MENSAL_MINIMO}: nem os últimos ${MESES_FATURAMENTO} meses, nem os últimos 3 meses atingiram o mínimo.`,
-        dadosExtraidos: dados,
       };
     }
   }
 
-  return { aprovado: true, motivo: null, dadosExtraidos: dados };
+  return { aprovado: true, motivo: null };
+}
+
+export async function validarVideoApp(videoUrl: string): Promise<{
+  aprovado: boolean;
+  motivo: string | null;
+  dadosExtraidos: ResultadoVideoApp;
+}> {
+  const dados = (await analisarVideo(videoUrl, PROMPT)) as unknown as ResultadoVideoApp;
+  const { aprovado, motivo } = validarRegraVideoApp(dados);
+  return { aprovado, motivo, dadosExtraidos: dados };
 }

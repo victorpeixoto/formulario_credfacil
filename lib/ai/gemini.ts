@@ -3,6 +3,9 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const MODEL = 'gemini-2.5-flash';
+// Tarefas de extração (não geração criativa): saída determinística reduz variância
+// e a chance de o modelo fabricar dados que não estão na imagem/vídeo.
+const GENERATION_CONFIG = { temperature: 0 } as const;
 const RETRY_DELAY_MS = 5000;
 const MAX_RETRIES = 2;
 
@@ -106,7 +109,7 @@ export async function analisarImagem(
   prompt: string
 ): Promise<Record<string, unknown>> {
   return chamarComRetry(async () => {
-    const model = genAI.getGenerativeModel({ model: MODEL });
+    const model = genAI.getGenerativeModel({ model: MODEL, generationConfig: GENERATION_CONFIG });
     const inlineData = await downloadAsInlineData(imageUrl);
     const result = await model.generateContent([
       prompt,
@@ -122,7 +125,7 @@ export async function analisarImagemComEspelho(
   prompt: string
 ): Promise<Record<string, unknown>> {
   return chamarComRetry(async () => {
-    const model = genAI.getGenerativeModel({ model: MODEL });
+    const model = genAI.getGenerativeModel({ model: MODEL, generationConfig: GENERATION_CONFIG });
     const { data, mimeType } = await downloadAsBase64(imageUrl);
 
     const originalBuffer = Buffer.from(data, 'base64');
@@ -145,7 +148,7 @@ export async function analisarVideo(
   prompt: string
 ): Promise<Record<string, unknown>> {
   return chamarComRetry(async () => {
-    const model = genAI.getGenerativeModel({ model: MODEL });
+    const model = genAI.getGenerativeModel({ model: MODEL, generationConfig: GENERATION_CONFIG });
     const { data, mimeType } = await downloadAsBase64(videoUrl);
     const result = await model.generateContent([
       prompt,
